@@ -22,5 +22,6 @@ typedef struct {
 } CatalyzeConfig;
 
 Result find_config_file(Arena* arena);
+Result parse_config(Arena* arena);
 
 #endif // !CONFIG_H

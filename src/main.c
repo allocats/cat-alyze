@@ -8,13 +8,10 @@
 static Arena arena = {0};
 
 int main(int argc, char *argv[]) {
-    Result config_file = find_config_file(&arena);
+    CatalyzeConfig* config; // allocated in parse_config()
+    Result result = parse_config(&arena);
 
-    if (IS_OK(config_file)) {
-        printf("config.cat found!\n");
-    } else  {
-        printf("%s", ERR_MSG(config_file));
-    }
+    // print err function with nice formatting, check result on result
 
     arena_free(&arena);
 }
