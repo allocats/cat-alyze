@@ -53,7 +53,7 @@ Result parse_config(Arena* arena) {
     fread(buffer, 1, len, fptr); 
     buffer[len] = '\0';
 
-    Result result = lexer_parse(arena, buffer);
+    fclose(fptr);
 
-    return ok("placeholder");
+    return lexer_parse(arena, buffer);
 }
