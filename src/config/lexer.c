@@ -242,11 +242,6 @@ static Result parse_target_section(Lexer* lexer) {
     result = expect_keyword(lexer, "target");
     if (IS_ERR(result)) return result;
 
-    skip_whitespace(lexer);
-
-    Target* target = &lexer -> config -> targets[lexer -> config -> target_count];
-    result = parse_identifier(lexer, target -> name, MAX_NAME_LEN);
-    if (IS_ERR(result)) return result;
 
     skip_whitespace(lexer);
 
@@ -254,7 +249,36 @@ static Result parse_target_section(Lexer* lexer) {
         char type[32];
         result = parse_identifier(lexer, type, sizeof(type));
         if (IS_ERR(result)) return result;
+
+        switch (type[0]) {
+            case 'e':
+                if (strcmp(type, "executable")) lexer -> config -> targets[lexer -> config -> target_count].type = Executable;
+                break;
+
+            case 't':
+                if (strcmp(type, "test")) lexer -> config -> targets[lexer -> config -> target_count].type = Test;
+                break;
+
+            case 'd':
+                if (strcmp(type, "debug")) lexer -> config -> targets[lexer -> config -> target_count].type = Debug;
+                break;
+
+            case 's':
+                if (strcmp(type, "static_lib")) lexer -> config -> targets[lexer -> config -> target_count].type = StaticLib;
+                if (strcmp(type, "shared_lib")) lexer -> config -> targets[lexer -> config -> target_count].type = SharedLib;
+                break;
+
+            default:
+                lexer_err(lexer, "Uknown target type");
+                return err("Uknown target type");
+        }
     }
+
+    skip_whitespace(lexer);
+
+    Target* target = &lexer -> config -> targets[lexer -> config -> target_count];
+    result = parse_identifier(lexer, target -> name, MAX_NAME_LEN);
+    if (IS_ERR(result)) return result;
 
     skip_whitespace(lexer);
 
