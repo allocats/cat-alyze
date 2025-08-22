@@ -231,7 +231,7 @@ Result lexer_parse(Arena* arena, const char* buffer) {
     }
 
     len = &lexer -> buffer[lexer -> current] - start;
-    char* target;
+    char* target = arena_alloc(arena, len);
     strncpy(target, start, len);
     target[len] = '\0';
 
