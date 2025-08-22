@@ -1,10 +1,10 @@
 config {
     compiler: clang
     build_dir: build/
-    flags: -Wall -Wextra
+    default_flags: -Wall -Wextra
 }
 
-target catalyze {
+target executable catalyze {
     sources: src/*.c 
     flags: -O3
     output: build/bin/catalyze

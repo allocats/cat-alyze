@@ -1,6 +1,7 @@
 #include "lexer.h" 
 #include "config.h"
 
+#include <dirent.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -57,8 +58,8 @@ static Lexer* create_lexer(Arena* arena, CatalyzeConfig* config, const char* buf
     lexer -> current = 0;
     lexer -> c = lexer -> buffer[0];
 
-    lexer -> config -> flag_count = 0;
-    lexer -> config -> source_count = 0;
+    lexer -> config -> default_flag_count = 0;
+    lexer -> config -> target_count = 0;
 
     return lexer;
 }
@@ -102,8 +103,8 @@ static Result parse_single(Lexer* lexer, char* dest, size_t max_len) {
     return ok(NULL);
 }
 
-static Result parse_flags(Lexer* lexer) {
-    uint8_t i = lexer -> config -> flag_count;
+static Result parse_default_flags(Lexer* lexer) {
+    uint8_t i = lexer -> config -> default_flag_count;
 
     while (lexer -> c != '\n' && i < MAX_FLAGS) {
         skip_whitespace(lexer);
@@ -120,12 +121,12 @@ static Result parse_flags(Lexer* lexer) {
             return err("Invalid flag");
         }
 
-        strncpy(lexer -> config -> flags[i], flag_start, flag_len);
-        lexer -> config -> flags[i][flag_len] = '\0';
+        strncpy(lexer -> config -> default_flags[i], flag_start, flag_len);
+        lexer -> config -> default_flags[i][flag_len] = '\0';
         i++;
     }
 
-    lexer -> config -> flag_count = i;
+    lexer -> config -> default_flag_count = i;
     return ok(NULL);
 }
 
@@ -142,8 +143,8 @@ static Result match_options(Lexer* lexer, const char* start, size_t len) {
             if (strncmp(start, "compiler", len) == 0) return parse_single(lexer, lexer -> config -> compiler, MAX_COMPILER_LEN); 
             break;
 
-        case 'f':
-            if (strncmp(start, "flags", len) == 0) return parse_flags(lexer);
+        case 'd':
+            if (strncmp(start, "default_flags", len) == 0) return parse_default_flags(lexer);
             break;
     }
 
@@ -167,91 +168,135 @@ static Result parse_key(Lexer* lexer) {
     return match_options(lexer, start, len);
 }
 
-Result lexer_parse(Arena* arena, const char* buffer) {
-    CatalyzeConfig* config = arena_alloc(arena, sizeof(*config));
-    Lexer* lexer = create_lexer(arena, config, buffer);
-
-    skip_whitespace(lexer);
-    if (lexer -> c != 'c') {
-        lexer_err(lexer, "Expected 'config'");
-        return err("Parsing failed, error in config.cat");
-    }
-
+static Result expect_keyword(Lexer* lexer, const char* keyword) {
     const char* start = &lexer -> buffer[lexer -> current];
     while (IS_ALPHA(lexer -> c)) {
         advance(lexer);
     }
 
     size_t len = &lexer -> buffer[lexer -> current] - start;
-    if (strncmp(start, "config", len) != 0) {
-        lexer_err(lexer, "Expected 'config'");
-        return err("Parsing failed, error in config.cat");
+    if (len != strlen(keyword) || strncmp(start, keyword, len) != 0) {
+        char msg[64];
+        snprintf(msg, sizeof(msg), "Expected: %s", keyword);
+        lexer_err(lexer, msg);
+        return err("Parsing failed");
     }
-    skip_whitespace(lexer);
 
-    if (lexer -> c != '{') {
-        lexer_err(lexer, "Expected '{'");
-        return err("Parsing failed, error in config.cat");
+    return ok(NULL);
+}
+
+static Result expect_char(Lexer* lexer, const char expected) {
+    if (lexer -> c != expected) {
+        char msg[64];
+        snprintf(msg, sizeof(msg), "Expected: %c", expected);
+        lexer_err(lexer, msg);
+        return err("Parsing failed");
     }
-    
-    advance(lexer);
-    skip_whitespace(lexer);
-
-    while (lexer -> c != '}') {
-        Result result = parse_key(lexer);
-        if (IS_ERR(result)) {
-            printf("%s\n", ERR_MSG(result));
-            return err("Parsing failed, error in config.cat");
-        }
-    } 
 
     advance(lexer);
-    skip_whitespace(lexer);
+    return ok(NULL);
+}
 
-    if (lexer -> c != 't') {
-        lexer_err(lexer, "Expected 'target'");
-        return err("Parsing failed, error in config.cat");
-    }
-
-    start = &lexer -> buffer[lexer -> current];
-    while (IS_ALPHA(lexer -> c)) {
+static Result parse_identifier(Lexer* lexer, char* dest, size_t max_len) {
+    const char* start = &lexer -> buffer[lexer -> current];
+    while (IS_ALPHA(lexer ->c)) {
         advance(lexer);
     }
 
-    len = &lexer -> buffer[lexer -> current] - start;
-    if (strncmp(start, "target", len) != 0) {
-        lexer_err(lexer, "Expected 'target'");
-        return err("Parsing failed, error in config.cat");
+    size_t len = &lexer -> buffer[lexer -> current] - start;
+    if (len >= max_len) {
+        lexer_err(lexer, "Identifier too long");
+        return err("Parsing failed");
     }
+
+    strncpy(dest, start, len);
+    dest[len] = '\0';
+    return ok(NULL);
+}
+
+static Result parse_config_section(Lexer* lexer) {
+    Result result;
+
+    result = expect_keyword(lexer, "config");
+    if (IS_ERR(result)) return result;
+
     skip_whitespace(lexer);
 
-    start = &lexer -> buffer[lexer -> current];
-    while (IS_ALPHA(lexer -> c)) {
-        advance(lexer);
-    }
-
-    len = &lexer -> buffer[lexer -> current] - start;
-    char* target = arena_alloc(arena, len);
-    strncpy(target, start, len);
-    target[len] = '\0';
+    result = expect_char(lexer, '{');
+    if (IS_ERR(result)) return result;
 
     skip_whitespace(lexer);
-    if (lexer -> c != '{') {
-        lexer_err(lexer, "Expected '{'");
-        return err("Parsing failed, error in config.cat");
+    while (lexer -> c != '}') {
+        result = parse_key(lexer);
+        if (IS_ERR(result)) return result;
+        skip_whitespace(lexer);
     }
-    
+
     advance(lexer);
+    return ok(NULL);
+}
+
+static Result parse_target_section(Lexer* lexer) {
+    Result result;
+
+    result = expect_keyword(lexer, "target");
+    if (IS_ERR(result)) return result;
+
+    skip_whitespace(lexer);
+
+    Target* target = &lexer -> config -> targets[lexer -> config -> target_count];
+    result = parse_identifier(lexer, target -> name, MAX_NAME_LEN);
+    if (IS_ERR(result)) return result;
+
+    skip_whitespace(lexer);
+
+    if (IS_ALPHA(lexer -> c)) {
+        char type[32];
+        result = parse_identifier(lexer, type, sizeof(type));
+        if (IS_ERR(result)) return result;
+    }
+
+    skip_whitespace(lexer);
+
+    result = expect_char(lexer, '{');
+    if (IS_ERR(result)) return result;
+
     skip_whitespace(lexer);
 
     while (lexer -> c != '}') {
-        Result result = parse_key(lexer);
-        if (IS_ERR(result)) {
-            printf("%s\n", ERR_MSG(result));
-            return err("Parsing failed, error in config.cat");
-        }
-    } 
+        result = parse_key(lexer);
+        if (IS_ERR(result)) return result;
+        skip_whitespace(lexer);
+    }
 
+    advance(lexer);
+    lexer -> config -> target_count++;
+
+    return ok(NULL);
+}
+
+Result lexer_parse(Arena* arena, const char* buffer) {
+    CatalyzeConfig* config = arena_alloc(arena, sizeof(*config));
+    Lexer* lexer = create_lexer(arena, config, buffer);
+    Result result;
+
+    config -> target_count = 0;
+
+    skip_whitespace(lexer);
+    result = parse_config_section(lexer);
+    if (IS_ERR(result)) return result;
+
+    skip_whitespace(lexer);
+    while (lexer -> c == 't' && lexer -> config -> target_count < MAX_TARGETS) {
+        result = parse_target_section(lexer);
+        if (IS_ERR(result)) return result;
+        skip_whitespace(lexer);
+    }
+
+    if (lexer -> config -> target_count == 0) {
+        lexer_err(lexer, "At least on target is required");
+        return err("No targets found");
+    }
 
     return ok(lexer -> config);
 }

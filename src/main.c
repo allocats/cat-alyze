@@ -19,9 +19,9 @@ int main(int argc, char *argv[]) {
 
     config = (CatalyzeConfig*) result.data; 
 
-    printf("Parsed %d flags:\n", config->flag_count);
-    for(int i = 0; i < config->flag_count; i++) {
-        printf("  [%d]: '%s'\n", i, config->flags[i]);
+    printf("Parsed %d flags:\n", config->default_flag_count);
+    for(int i = 0; i < config->default_flag_count; i++) {
+        printf("  [%d]: '%s'\n", i, config->default_flags[i]);
     }
 
     arena_free(&arena);
