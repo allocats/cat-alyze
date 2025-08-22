@@ -17,6 +17,10 @@
 #define MAX_OUTPUT_NAME_LEN 128
 
 typedef struct {
+
+} Target;
+
+typedef struct {
     char compiler[MAX_COMPILER_LEN];
     char flags[MAX_FLAGS][MAX_FLAG_LEN];
     uint16_t flag_count;
