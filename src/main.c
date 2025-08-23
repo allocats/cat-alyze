@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include "core/build.h"
 #include "utils/arena.h"
 #include "utils/result.h"
 
@@ -20,6 +21,7 @@ int main(int argc, char *argv[]) {
     config = (CatalyzeConfig*) result.data; 
 
     print_config(config);
+    build_project(&arena, config, "catalyze");
 
     arena_free(&arena);
 }
