@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
 
 #define IS_ALPHA(c) (char_map[(char)(c)] & 1)
 #define IS_WHITESPACE(c) (char_map[(char)(c)] & 2)
@@ -58,9 +59,6 @@ static Lexer* create_lexer(Arena* arena, CatalyzeConfig* config, const char* buf
     lexer -> len = strlen(lexer -> buffer);
     lexer -> current = 0;
     lexer -> c = lexer -> buffer[0];
-
-    lexer -> config -> default_flag_count = 0;
-    lexer -> config -> target_count = 0;
 
     return lexer;
 }
@@ -131,6 +129,34 @@ static Result parse_default_flags(Lexer* lexer) {
     return ok(NULL);
 }
 
+static Result parse_target_flags(Lexer* lexer) {
+    uint8_t i = lexer -> config -> target_count;
+    uint8_t count = 0;
+
+    while (lexer -> c != '\n' && i < MAX_FLAGS) {
+        skip_whitespace(lexer);
+        if (lexer -> c == '\n') break;
+
+        const char* flag_start = &lexer -> buffer[lexer -> current];
+        while (IS_ALPHA(lexer -> c)) {
+            advance(lexer);
+        }
+
+        size_t flag_len = &lexer -> buffer[lexer -> current] - flag_start;
+        if (flag_len > MAX_FLAG_LEN || flag_start[0] != '-') {
+            lexer_err(lexer, "Invalid flag");
+            return err("Invalid flag");
+        }
+
+        strncpy(lexer -> config -> targets[i].flags[count], flag_start, flag_len);
+        lexer -> config -> targets[i].flags[count][flag_len] = '\0';
+        count++;
+    }
+
+    lexer -> config -> targets[i].flag_count = count;
+    return ok(NULL);
+}
+
 static Result parse_sources(Lexer* lexer) {
     uint8_t i = lexer -> config -> target_count;
     uint8_t count = 0;
@@ -159,6 +185,41 @@ static Result parse_sources(Lexer* lexer) {
     return ok(NULL);
 }
 
+static Result parse_target_output(Lexer* lexer) {
+    Target* target = &lexer -> config -> targets[lexer -> config -> target_count];
+
+    const char* start = &lexer -> buffer[lexer -> current];
+    while (IS_ALPHA(lexer -> c)) {
+        advance(lexer);
+    }
+
+    const char* end = &lexer -> buffer[lexer -> current];
+    const char* current = end;
+
+    if (current == start) {
+        lexer_err(lexer, "Invalid output");
+        return err("Invalid output path");
+    }
+
+    while (*(current - 1) != '/') {
+        if (current == start) {
+            lexer_err(lexer, "Invalid output");
+            return err("Invalid output path");
+        }
+        current--;
+    }
+
+    size_t len = end - current;
+    strncpy(target -> output_name, current, len);
+    target -> output_name[len] = '\0';
+
+    len = current - start;
+    strncpy(target -> output_dir, start, len);
+    target -> output_dir[len] = '\0';
+
+    return ok(NULL);
+}
+
 static Result match_options(Lexer* lexer, const char* start, size_t len) {
     advance(lexer);
     skip_whitespace(lexer);
@@ -174,6 +235,14 @@ static Result match_options(Lexer* lexer, const char* start, size_t len) {
 
         case 'd':
             if (strncmp(start, "default_flags", len) == 0) return parse_default_flags(lexer);
+            break;
+
+        case 'f':
+            if (strncmp(start, "flags", len) == 0) return parse_target_flags(lexer);
+            break;
+
+        case 'o':
+            if (strncmp(start, "output", len) == 0) return parse_target_output(lexer);
             break;
 
         case 's':
@@ -285,20 +354,20 @@ static Result parse_target_section(Lexer* lexer) {
 
         switch (type[0]) {
             case 'e':
-                if (strcmp(type, "executable")) lexer -> config -> targets[lexer -> config -> target_count].type = Executable;
+                if (strcmp(type, "executable") == 0) lexer -> config -> targets[lexer -> config -> target_count].type = Executable;
                 break;
 
             case 't':
-                if (strcmp(type, "test")) lexer -> config -> targets[lexer -> config -> target_count].type = Test;
+                if (strcmp(type, "test") == 0) lexer -> config -> targets[lexer -> config -> target_count].type = Test;
                 break;
 
             case 'd':
-                if (strcmp(type, "debug")) lexer -> config -> targets[lexer -> config -> target_count].type = Debug;
+                if (strcmp(type, "debug") == 0) lexer -> config -> targets[lexer -> config -> target_count].type = Debug;
                 break;
 
             case 's':
-                if (strcmp(type, "static_lib")) lexer -> config -> targets[lexer -> config -> target_count].type = StaticLib;
-                if (strcmp(type, "shared_lib")) lexer -> config -> targets[lexer -> config -> target_count].type = SharedLib;
+                if (strcmp(type, "static_lib") == 0) lexer -> config -> targets[lexer -> config -> target_count].type = StaticLib;
+                if (strcmp(type, "shared_lib") == 0) lexer -> config -> targets[lexer -> config -> target_count].type = SharedLib;
                 break;
 
             default:
@@ -334,6 +403,8 @@ static Result parse_target_section(Lexer* lexer) {
 
 Result lexer_parse(Arena* arena, const char* buffer) {
     CatalyzeConfig* config = arena_alloc(arena, sizeof(*config));
+    arena_memset(config, 0, sizeof(*config));
+
     Lexer* lexer = create_lexer(arena, config, buffer);
     Result result;
 

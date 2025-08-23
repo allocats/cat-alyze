@@ -53,5 +53,6 @@ typedef struct {
 
 Result find_config_file(Arena* arena);
 Result parse_config(Arena* arena);
+void print_config(const CatalyzeConfig* config);
 
 #endif // !CONFIG_H

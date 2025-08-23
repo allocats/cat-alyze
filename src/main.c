@@ -8,7 +8,7 @@
 static Arena arena = {0};
 
 int main(int argc, char *argv[]) {
-    CatalyzeConfig* config; // allocated in parse_config()
+    CatalyzeConfig* config; // allocated in lexer_parse() called and returned by parse_config()
     Result result = parse_config(&arena);
 
     if (IS_ERR(result)) {
@@ -19,10 +19,7 @@ int main(int argc, char *argv[]) {
 
     config = (CatalyzeConfig*) result.data; 
 
-    printf("Parsed %d flags:\n", config->default_flag_count);
-    for(int i = 0; i < config->default_flag_count; i++) {
-        printf("  [%d]: '%s'\n", i, config->default_flags[i]);
-    }
+    print_config(config);
 
     arena_free(&arena);
 }
