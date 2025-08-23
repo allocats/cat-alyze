@@ -5,7 +5,7 @@ config {
 }
 
 target executable catalyze {
-    sources: src/*.c 
+    sources: src/*.c
     flags: -O3
     output: build/bin/catalyze
 }

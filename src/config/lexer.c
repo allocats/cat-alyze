@@ -21,6 +21,7 @@ static const uint8_t char_map[256] = {
     ['-'] = 1,
     ['/'] = 1,
     ['.'] = 1,
+    ['*'] = 1,
 
     [' '] = 2, 
     ['\t'] = 2, 
@@ -130,6 +131,34 @@ static Result parse_default_flags(Lexer* lexer) {
     return ok(NULL);
 }
 
+static Result parse_sources(Lexer* lexer) {
+    uint8_t i = lexer -> config -> target_count;
+    uint8_t count = 0;
+
+    while (lexer -> c != '\n' && i < MAX_SOURCES) {
+        skip_whitespace(lexer);
+        if (lexer -> c == '\n') break;
+
+        const char* source_start = &lexer -> buffer[lexer -> current];
+        while (!IS_WHITESPACE(lexer -> c)) {
+            advance(lexer);
+        }
+
+        size_t source_len = &lexer -> buffer[lexer -> current] - source_start;
+        if (source_len > MAX_SOURCE_LEN) {
+            lexer_err(lexer, "Invalid source");
+            return err("Invalid source");
+        }
+
+        strncpy(lexer -> config -> targets[i].sources[count], source_start, source_len);
+        lexer -> config -> targets[i].sources[count][source_len] = '\0';
+        count++;
+    }
+
+    lexer -> config -> targets[i].source_count = count;
+    return ok(NULL);
+}
+
 static Result match_options(Lexer* lexer, const char* start, size_t len) {
     advance(lexer);
     skip_whitespace(lexer);
@@ -145,6 +174,10 @@ static Result match_options(Lexer* lexer, const char* start, size_t len) {
 
         case 'd':
             if (strncmp(start, "default_flags", len) == 0) return parse_default_flags(lexer);
+            break;
+
+        case 's':
+            if (strncmp(start, "sources", len) == 0) return parse_sources(lexer);
             break;
     }
 
