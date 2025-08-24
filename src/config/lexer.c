@@ -84,6 +84,13 @@ static void skip_whitespace(Lexer* lexer) {
     } 
 }
 
+static void skip_spaces(Lexer* lexer) {
+    while (IS_WHITESPACE(lexer -> c) && lexer -> c != '\n') {
+        if (lexer -> current >= lexer -> len) return;
+        advance(lexer);
+    } 
+}
+
 static Result parse_single(Lexer* lexer, char* dest, size_t max_len) {
     const char* start = &lexer -> buffer[lexer -> current];
     while (IS_ALPHA(lexer -> c)) {
@@ -103,10 +110,10 @@ static Result parse_single(Lexer* lexer, char* dest, size_t max_len) {
 }
 
 static Result parse_default_flags(Lexer* lexer) {
-    uint8_t i = lexer -> config -> default_flag_count;
+    uint8_t i = 0;
 
     while (lexer -> c != '\n' && i < MAX_FLAGS) {
-        skip_whitespace(lexer);
+        skip_spaces(lexer);
         if (lexer -> c == '\n') break;
 
         const char* flag_start = &lexer -> buffer[lexer -> current];
@@ -133,8 +140,8 @@ static Result parse_target_flags(Lexer* lexer) {
     uint8_t i = lexer -> config -> target_count;
     uint8_t count = 0;
 
-    while (lexer -> c != '\n' && i < MAX_FLAGS) {
-        skip_whitespace(lexer);
+    while (lexer -> c != '\n' && count < MAX_FLAGS) {
+        skip_spaces(lexer);
         if (lexer -> c == '\n') break;
 
         const char* flag_start = &lexer -> buffer[lexer -> current];
@@ -161,12 +168,12 @@ static Result parse_sources(Lexer* lexer) {
     uint8_t i = lexer -> config -> target_count;
     uint8_t count = 0;
 
-    while (lexer -> c != '\n' && i < MAX_SOURCES) {
-        skip_whitespace(lexer);
+    while (lexer -> c != '\n' && count < MAX_SOURCES) {
+        skip_spaces(lexer);
         if (lexer -> c == '\n') break;
 
         const char* source_start = &lexer -> buffer[lexer -> current];
-        while (!IS_WHITESPACE(lexer -> c)) {
+        while (!IS_WHITESPACE(lexer -> c) && lexer -> c != '\n') {
             advance(lexer);
         }
 

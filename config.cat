@@ -1,11 +1,11 @@
 config {
     compiler: clang
-    build_dir: build/
+    build_dir: test/build/
     default_flags: -Wall -Wextra
 }
 
-target executable catalyze {
-    sources: src/*.c
+target executable result {
+    sources: test/src/test.c test/src/plink.c
     flags: -O3
-    output: build/bin/catalyze
+    output: test/build/bin/result
 }

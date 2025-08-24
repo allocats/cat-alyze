@@ -21,7 +21,13 @@ int main(int argc, char *argv[]) {
     config = (CatalyzeConfig*) result.data; 
 
     print_config(config);
-    build_project(&arena, config, "catalyze");
+    result = build_project(&arena, config, "result");
+
+    if (IS_ERR(result)) {
+        printf("Error: %s\n", ERR_MSG(result));
+        arena_free(&arena);
+        return 1;
+    }
 
     arena_free(&arena);
 }
