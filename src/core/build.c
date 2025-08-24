@@ -117,8 +117,6 @@ Result build_project(Arena* arena, CatalyzeConfig* config, const char* target) {
     offset += snprintf(cmd + offset, size - offset, " -o");
     offset += snprintf(cmd + offset, size - offset, " %s%s%s", path_prefix, build_target -> output_dir, build_target -> output_name);
 
-    printf("%s", cmd);
-
     if (system(cmd) != 0) {
         return err("compiler failed");
     }

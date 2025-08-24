@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-rm -rvf build
-mkdir -p build/bin 
+rm -rvf build &>/dev/null
+mkdir -p build/bin &>/dev/null 
 
 clang -g3 -ggdb3 -c src/main.c -o build/main.o 
 clang -g3 -ggdb3 -c src/config/config.c -o build/config.o 
