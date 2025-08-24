@@ -408,7 +408,7 @@ static Result parse_target_section(Lexer* lexer) {
     return ok(NULL);
 }
 
-Result lexer_parse(Arena* arena, const char* buffer) {
+Result lexer_parse(Arena* arena, const char* buffer, uint8_t nest_count) {
     CatalyzeConfig* config = arena_alloc(arena, sizeof(*config));
     arena_memset(config, 0, sizeof(*config));
 
@@ -416,6 +416,7 @@ Result lexer_parse(Arena* arena, const char* buffer) {
     Result result;
 
     config -> target_count = 0;
+    config -> nest_count = nest_count;
 
     skip_whitespace(lexer);
     result = parse_config_section(lexer);

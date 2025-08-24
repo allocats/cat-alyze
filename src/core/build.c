@@ -31,7 +31,12 @@ Result build_project(Arena* arena, CatalyzeConfig* config, const char* target) {
         return err("Target not found");
     }
 
-    printf("\nCount: %d\n", build_target -> source_count);
+    char* path_prefix = arena_alloc(arena, (config -> nest_count * 3) + 1);
+    path_prefix[0] = '\0';
+
+    for (uint8_t i = 0; i < config -> nest_count; i++) {
+        strcat(path_prefix, "../");
+    }
 
     char** all_flags = arena_array(arena, char*, (config -> default_flag_count + build_target -> flag_count));
     uint8_t flag_count = 0;
@@ -55,9 +60,11 @@ Result build_project(Arena* arena, CatalyzeConfig* config, const char* target) {
         char* object_file = source_to_object_name(arena, build_target -> sources[i]);
 
         size += strlen(build_target -> sources[i]) + 1;
+        size += strlen(path_prefix) + 1;
         size += strlen(config -> build_dir) + 1;
         size += strlen(object_file) + 1;
-
+        size += strlen(path_prefix) + 1;
+ 
         size = align_size(size);
         char cmd[size];
 
@@ -68,10 +75,10 @@ Result build_project(Arena* arena, CatalyzeConfig* config, const char* target) {
         }
 
         offset += snprintf(cmd + offset, size - offset, " -c");
-        offset += snprintf(cmd + offset, size - offset, " %s", build_target -> sources[i]);
+        offset += snprintf(cmd + offset, size - offset, " %s%s", path_prefix, build_target -> sources[i]);
 
         offset += snprintf(cmd + offset, size - offset, " -o");
-        offset += snprintf(cmd + offset, size - offset, " %s%s", config -> build_dir, object_file);
+        offset += snprintf(cmd + offset, size - offset, " %s%s%s", path_prefix, config -> build_dir, object_file);
 
         all_object_files[i] = arena_strdup(arena, object_file);
 
@@ -81,6 +88,7 @@ Result build_project(Arena* arena, CatalyzeConfig* config, const char* target) {
     }
 
     size_t size = 32 + strlen(config -> compiler) + 1; 
+    size += strlen(path_prefix) + 1;
     size += strlen(build_target -> output_dir);
     size += strlen(build_target -> output_name);
     
@@ -90,10 +98,12 @@ Result build_project(Arena* arena, CatalyzeConfig* config, const char* target) {
 
     for (uint8_t i = 0; i < build_target -> source_count; i++) {
         size += strlen(all_object_files[i]) + 1;
+        size += strlen(path_prefix) + 1;
     }
 
-    char cmd[size];
+    size += strlen(path_prefix) + 1;
 
+    char cmd[size];
     size_t offset = snprintf(cmd, size, "%s", config -> compiler);
 
     for (uint8_t i = 0; i < flag_count; i++) {
@@ -101,11 +111,13 @@ Result build_project(Arena* arena, CatalyzeConfig* config, const char* target) {
     }
 
     for (uint8_t i = 0; i < build_target -> source_count; i++) {
-        offset += snprintf(cmd + offset, size - offset, " %s%s", config -> build_dir, all_object_files[i]);
+        offset += snprintf(cmd + offset, size - offset, " %s%s%s", path_prefix, config -> build_dir, all_object_files[i]);
     }
 
     offset += snprintf(cmd + offset, size - offset, " -o");
-    offset += snprintf(cmd + offset, size - offset, " %s%s", build_target -> output_dir, build_target -> output_name);
+    offset += snprintf(cmd + offset, size - offset, " %s%s%s", path_prefix, build_target -> output_dir, build_target -> output_name);
+
+    printf("%s", cmd);
 
     if (system(cmd) != 0) {
         return err("compiler failed");

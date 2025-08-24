@@ -41,6 +41,8 @@ typedef struct {
 } Target;
 
 typedef struct {
+    uint8_t nest_count;
+
     char compiler[MAX_COMPILER_LEN];
     char default_flags[MAX_FLAGS][MAX_FLAG_LEN];
     uint16_t default_flag_count;
@@ -51,7 +53,7 @@ typedef struct {
     uint8_t target_count;
 } CatalyzeConfig;
 
-Result find_config_file(Arena* arena);
+Result find_config_file(Arena* arena, uint8_t* nest_count);
 Result parse_config(Arena* arena);
 void print_config(const CatalyzeConfig* config);
 

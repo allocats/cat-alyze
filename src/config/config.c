@@ -2,11 +2,12 @@
 #include "lexer.h"
 
 #include <dirent.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
-Result find_config_file(Arena* arena) {
+Result find_config_file(Arena* arena, uint8_t* nest_count) {
     char* curr_path = arena_alloc(arena, MAX_PATH);
     getcwd(curr_path, MAX_PATH);
 
@@ -29,13 +30,16 @@ Result find_config_file(Arena* arena) {
         }
         closedir(dir);
         strcat(curr_path, "/..");
+
+        *nest_count = i + 1;
     }
 
     return err("config.cat not found");
 }
 
 Result parse_config(Arena* arena) { 
-    Result path = find_config_file(arena);
+    uint8_t nest_count = 0;
+    Result path = find_config_file(arena, &nest_count);
 
     if (IS_ERR(path)) {
         return err(ERR_MSG(path));
@@ -55,7 +59,7 @@ Result parse_config(Arena* arena) {
 
     fclose(fptr);
 
-    return lexer_parse(arena, buffer);
+    return lexer_parse(arena, buffer, nest_count);
 }
 
 static const char* target_type_to_string(TargetType type) {

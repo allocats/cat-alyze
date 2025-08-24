@@ -4,6 +4,8 @@
 #include "../utils/arena.h"
 #include "config.h"
 
+#include <stdint.h>
+
 typedef struct {
     Arena* arena;
     CatalyzeConfig* config;
@@ -13,6 +15,6 @@ typedef struct {
     char c;
 } Lexer;
 
-Result lexer_parse(Arena* arena, const char* buffer);
+Result lexer_parse(Arena* arena, const char* buffer, uint8_t nest_count);
 
 #endif // !LEXER_H
