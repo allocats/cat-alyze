@@ -1,20 +1,28 @@
+#include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
+#include "config/config.h"
 #include "core/build.h"
+
 #include "utils/arena.h"
+#include "utils/help.h"
 #include "utils/result.h"
 #include "utils/timer.h"
 
-#include "config/config.h"
-
 static Arena arena = {0};
 
-void print_err(const char* msg) {
+static void print_err(const char* msg) {
     fprintf(stderr, "\e[1mError:\e[0m %s\n", msg);
 }
 
 int main(int argc, char *argv[]) {
-    Timer timer;
+    if (argc < 2 || argc > 18) {
+        print_help();
+        arena_free(&arena);
+        return 1;
+    }
+
     CatalyzeConfig* config; // allocated in lexer_parse() called and returned by parse_config()
     Result result = parse_config(&arena);
 
@@ -23,20 +31,56 @@ int main(int argc, char *argv[]) {
         arena_free(&arena);
         return 1;
     }
-
     config = (CatalyzeConfig*) result.data; 
 
-    timer_start(&timer);
-    result = build_project(&arena, config, "result");
-    timer_end(&timer);
+    switch (argv[1][0]) {
+        case 'b':
+            if (strcmp(argv[1], "build") == 0) {
+                Timer timer;
 
-    if (IS_ERR(result)) {
-        print_err(ERR_MSG(result));
-        arena_free(&arena);
-        return 1;
-    } 
+                if (argc == 2) {
+                    timer_start(&timer);
+                    result = build_project_all(&arena, config);
+                    timer_end(&timer);
 
-    printf("\nCompiling \e[1mfinished\e[0m! Took %.3f seconds\n", timer_elapsed_seconds(&timer));
+                    if (IS_ERR(result)) {
+                        print_err(ERR_MSG(result));
+                        arena_free(&arena);
+                        return 1;
+                    }
+
+                    printf("\nCompiling \e[1mfinished\e[0m! Built all targets. Took %.3f seconds\n", timer_elapsed_seconds(&timer));
+                } else {
+                    uint8_t i = 2;
+
+                    timer_start(&timer);
+                    while (i < argc) {
+                        result = build_project_target(&arena, config, argv[i]);
+
+                        if (IS_ERR(result)) {
+                            print_err(ERR_MSG(result));
+                            arena_free(&arena);
+                            return 1;
+                        }
+
+                        i++;
+                    }
+                    timer_end(&timer);
+                    printf("\nCompiling \e[1mfinished\e[0m! Built all targets. Took %.3f seconds\n", timer_elapsed_seconds(&timer));
+                }
+            } else {
+                print_help();
+                arena_free(&arena);
+                return 1;
+            }
+            break;
+
+        default:
+            print_help();
+            arena_free(&arena);
+            return 1;
+    }
 
     arena_free(&arena);
+    return 0;
 }
