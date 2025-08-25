@@ -9,13 +9,17 @@
 
 static Arena arena = {0};
 
+void print_err(const char* msg) {
+    fprintf(stderr, "\e[1mError:\e[0m %s\n", msg);
+}
+
 int main(int argc, char *argv[]) {
     Timer timer;
     CatalyzeConfig* config; // allocated in lexer_parse() called and returned by parse_config()
     Result result = parse_config(&arena);
 
     if (IS_ERR(result)) {
-        printf("Error: %s\n", ERR_MSG(result));
+        print_err(ERR_MSG(result));
         arena_free(&arena);
         return 1;
     }
@@ -27,7 +31,7 @@ int main(int argc, char *argv[]) {
     timer_end(&timer);
 
     if (IS_ERR(result)) {
-        printf("Error: %s\n", ERR_MSG(result));
+        print_err(ERR_MSG(result));
         arena_free(&arena);
         return 1;
     } 
