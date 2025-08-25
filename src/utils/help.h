@@ -13,7 +13,7 @@
 #define MAGENTA  "\033[35m"
 
 static void print_help(void) {
-    printf(BOLD CYAN "Catalyze" RESET " - A build system for C :3\n\n");
+    printf(BOLD CYAN "Catalyze" RESET " - A build system for C\n\n");
     
     printf(BOLD "USAGE:" RESET "\n");
     printf("    " BOLD "catalyze" RESET " " GREEN "[COMMAND]" RESET " " YELLOW "[ARGS]" RESET "\n\n");

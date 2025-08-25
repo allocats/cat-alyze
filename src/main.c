@@ -5,6 +5,8 @@
 #include "config/config.h"
 #include "core/build.h"
 
+#include "core/init.h"
+#include "core/new.h"
 #include "utils/arena.h"
 #include "utils/help.h"
 #include "utils/result.h"
@@ -24,20 +26,22 @@ int main(int argc, char *argv[]) {
     }
 
     CatalyzeConfig* config; // allocated in lexer_parse() called and returned by parse_config()
-    Result result = parse_config(&arena);
-
-    if (IS_ERR(result)) {
-        print_err(ERR_MSG(result));
-        arena_free(&arena);
-        return 1;
-    }
-    config = (CatalyzeConfig*) result.data; 
+    Result result;
 
     switch (argv[1][0]) {
         case 'b':
             if (strcmp(argv[1], "build") == 0) {
-                Timer timer;
+                result = parse_config(&arena);
 
+                if (IS_ERR(result)) {
+                    print_err(ERR_MSG(result));
+                    arena_free(&arena);
+                    return 1;
+                }
+
+                config = (CatalyzeConfig*) result.data; 
+
+                Timer timer;
                 if (argc == 2) {
                     timer_start(&timer);
                     result = build_project_all(&arena, config);
@@ -68,6 +72,52 @@ int main(int argc, char *argv[]) {
                     timer_end(&timer);
                     printf("\nCompiling \e[1mfinished\e[0m! Built all targets. Took %.3f seconds\n", timer_elapsed_seconds(&timer));
                 }
+            } else {
+                print_help();
+                arena_free(&arena);
+                return 1;
+            }
+            break;
+
+        case 'i':
+            if (strcmp(argv[1], "init") == 0) {
+                if (argc != 2) {
+                    print_err("Invalid, expects: catalyze init");
+                    arena_free(&arena);
+                    return 1;
+                }
+
+                result = init_project();
+                if (IS_ERR(result)) {
+                    print_err(ERR_MSG(result));
+                    arena_free(&arena);
+                    return 1;
+                }
+
+                printf("\nCreated! Happy coding!\n");
+            } else {
+                print_help();
+                arena_free(&arena);
+                return 1;
+            }
+            break;
+
+        case 'n':
+            if (strcmp(argv[1], "new") == 0) {
+                if (argc != 3) {
+                    print_err("Invalid, expects: catalyze new [name]");
+                    arena_free(&arena);
+                    return 1;
+                }
+
+                result = new_project(argv[2]);
+                if (IS_ERR(result)) {
+                    print_err(ERR_MSG(result));
+                    arena_free(&arena);
+                    return 1;
+                }
+
+                printf("\nCreated \e[1m%s\e[0m! Happy coding!\n", argv[2]);
             } else {
                 print_help();
                 arena_free(&arena);
