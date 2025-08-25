@@ -10,7 +10,11 @@
 #include <string.h>
 
 Result run_project_all(Arena* arena, CatalyzeConfig* config) {
-    build_project_all(arena, config);
+    Result result = build_project_all(arena, config);
+
+    if (IS_ERR(result)) {
+        return err(ERR_MSG(result));
+    }
 
     for (uint8_t i = 0; i < config -> target_count; i++) {
         Target* target = &config -> targets[i];
@@ -54,7 +58,11 @@ Result run_project_target(Arena* arena, CatalyzeConfig* config, const char* targ
         return err("Target not found");
     }
 
-    build_project_target(arena, config, target_name);
+    Result result = build_project_target(arena, config, target_name);
+    
+    if (IS_ERR(result)) {
+        return err(ERR_MSG(result));
+    }
 
     size_t size = 32 + strlen(target -> output_dir) + strlen(target -> output_name) + (3 * config -> nest_count);
     char cmd[size];

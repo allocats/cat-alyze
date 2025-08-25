@@ -7,12 +7,16 @@
 #include <string.h>
 #include <unistd.h>
 
-static void create_dir() {
+static Result create_dir() {
     size_t size = 32;
     char cmd[size];
     snprintf(cmd, size, "mkdir -p src");
 
-    system(cmd);
+    if (system(cmd) != 0) {
+        return err("Mkdir failed");
+    }
+
+    return ok(NULL);
 }
 
 static Result create_config(const char* name) {
@@ -48,9 +52,20 @@ Result init_project() {
     const char* name = strrchr(cwd, '/');
     name = name ? name + 1 : cwd;
 
-    create_dir();
-    create_config(name);
-    create_main();
+    Result result = create_dir();
+    if (IS_ERR(result)) {
+        return err(ERR_MSG(result));
+    }
+
+    result = create_config(name);
+    if (IS_ERR(result)) {
+        return err(ERR_MSG(result));
+    }
+
+    result = create_main();
+    if (IS_ERR(result)) {
+        return err(ERR_MSG(result));
+    }
 
     return ok(NULL);
 }

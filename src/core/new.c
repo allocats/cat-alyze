@@ -7,13 +7,17 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-static void create_dir(const char* name) {
+static Result create_dir(const char* name) {
     size_t size = 32 + MAX_NAME_LEN;
     char cmd[size];
     size_t offset = snprintf(cmd, size, "mkdir -p ");
     offset += snprintf(cmd + offset, size - offset, "%s/src", name);
 
-    system(cmd);
+    if (system(cmd) != 0) {
+        return err("Mkdir failed");
+    }
+
+    return ok(NULL);
 }
 
 static Result create_config(const char* name) {
@@ -22,7 +26,9 @@ static Result create_config(const char* name) {
     size_t offset = snprintf(cmd, size, "touch ");
     offset += snprintf(cmd + offset, size - offset, "%s/config.cat", name);
 
-    system(cmd);
+    if (system(cmd) != 0) {
+        return err("Touch failed");
+    }
 
     char path[size];
     snprintf(path, size, "%s/config.cat", name);
@@ -45,7 +51,9 @@ static Result create_main(const char* name) {
     size_t offset = snprintf(cmd, size, "touch ");
     offset += snprintf(cmd + offset, size - offset, "%s/src/main.c", name);
 
-    system(cmd);
+    if (system(cmd) != 0) {
+        return err("Touch failed");
+    }
 
     char path[size];
     snprintf(path, size, "%s/src/main.c", name);
@@ -67,9 +75,20 @@ Result new_project(const char* name) {
         return err("Project name too long");
     }
 
-    create_dir(name);
-    create_config(name);
-    create_main(name);
+    Result result = create_dir(name);
+    if (IS_ERR(result)) {
+        return err(ERR_MSG(result));
+    }
+
+    result = create_config(name);
+    if (IS_ERR(result)) {
+        return err(ERR_MSG(result));
+    }
+
+    result = create_main(name);
+    if (IS_ERR(result)) {
+        return err(ERR_MSG(result));
+    }
 
     return ok(NULL);
 }
