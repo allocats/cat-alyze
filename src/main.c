@@ -3,10 +3,12 @@
 #include <string.h>
 
 #include "config/config.h"
-#include "core/build.h"
 
+#include "core/build.h"
 #include "core/init.h"
 #include "core/new.h"
+#include "core/run.h"
+
 #include "utils/arena.h"
 #include "utils/help.h"
 #include "utils/result.h"
@@ -118,6 +120,54 @@ int main(int argc, char *argv[]) {
                 }
 
                 printf("\nCreated \e[1m%s\e[0m! Happy coding!\n", argv[2]);
+            } else {
+                print_help();
+                arena_free(&arena);
+                return 1;
+            }
+            break;
+
+        case 'r':
+            if (strcmp(argv[1], "run") == 0) {
+                if (argc == 2) {
+                    result = parse_config(&arena);
+
+                    if (IS_ERR(result)) {
+                        print_err(ERR_MSG(result));
+                        arena_free(&arena);
+                        return 1;
+                    }
+
+                    config = (CatalyzeConfig*) result.data; 
+                    result = run_project_all(&arena, config);
+
+                    if (IS_ERR(result)) {
+                        print_err(ERR_MSG(result));
+                        arena_free(&arena);
+                        return 1;
+                    }
+                } else if (argc == 3) {
+                    result = parse_config(&arena);
+
+                    if (IS_ERR(result)) {
+                        print_err(ERR_MSG(result));
+                        arena_free(&arena);
+                        return 1;
+                    }
+
+                    config = (CatalyzeConfig*) result.data; 
+                    result = run_project_target(&arena, config, argv[2]);
+
+                    if (IS_ERR(result)) {
+                        print_err(ERR_MSG(result));
+                        arena_free(&arena);
+                        return 1;
+                    }
+                } else {
+                    print_err("Invalid, expects: catalyze run [name] - Name is optional");
+                    arena_free(&arena);
+                    return 1;
+                }
             } else {
                 print_help();
                 arena_free(&arena);
