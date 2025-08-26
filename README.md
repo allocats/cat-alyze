@@ -1,6 +1,6 @@
 # cat-alayze
 
-My personal build system for C projects. Why? You might ask, well I got tired of writing makefiles over and over again, and CMake was not very appealing to me. I love working in Rust, so I thought why not build a Cargo like system for C! It is not the greatest and far from complete, but it works and something I am rather fond as well proud of. 
+My personal build system for C projects. Why? You might ask, well I got tired of writing makefiles over and over again, and CMake was not very appealing to me. I love working in Rust, so I thought why not build a Cargo like system for C! It is not the greatest and far from complete, but it works and something I am enjoy using as well proud of. 
 
 ## Quick Start
 
@@ -42,6 +42,12 @@ target executable myapp {
     sources: src/main.c src/utils.c
     flags: -O3
     output: build/bin/myapp
+}
+
+target debug myapp_debug {
+	sources: src/main.c
+	flags: -O0 -g3 -fsanitize=address -fno-omit-frame-pointer
+	output: build/debug/myapp_debug
 }
 
 target test unit_tests {
@@ -110,7 +116,7 @@ config {
 target executable hello {
     sources: src/main.c
     flags: -O2
-    output: build/hello
+    output: build/bin/hello
 }
 ```
 
