@@ -1,5 +1,7 @@
 #include "init.h"
 
+#include "core.h"
+
 #include "../config/config.h"
 
 #include <stdio.h>
@@ -26,7 +28,7 @@ static Result create_config(const char* name) {
         return err("Failed to write to config.cat");
     }
 
-    fprintf(fptr, "config {\n\tcompiler: clang\n\tbuild_dir: build/\n\tdefault_flags: -Wall -Wextra\n}\n\ntarget executable %s {\n\tsources: src/main.c\n\tflags: -O3\n\toutput: build/bin/%s\n}", name, name);
+    write_config(fptr, name);
 
     fclose(fptr);
     return ok(NULL);

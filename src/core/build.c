@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
-static Result make_build_dir(const char* dir) {
+Result make_build_dir(const char* dir) {
     size_t mkdir_size = 32 + MAX_BUILD_DIR_LEN;
     char mkdir_cmd[mkdir_size];
 
@@ -18,7 +18,7 @@ static Result make_build_dir(const char* dir) {
     return ok(NULL);
 }
 
-static Result make_bin_dir(const char* dir) {
+Result make_bin_dir(const char* dir) {
     size_t mkdir_size = 32 + MAX_BUILD_DIR_LEN;
     char mkdir_cmd[mkdir_size];
 
@@ -32,7 +32,7 @@ static Result make_bin_dir(const char* dir) {
     return ok(NULL);
 }
 
-static char* source_to_object_name(Arena* arena, const char* source_path) {
+char* source_to_object_name(Arena* arena, const char* source_path) {
     const char* name = strrchr(source_path, '/');
     name = name ? name + 1 : source_path;
 
@@ -46,7 +46,7 @@ static char* source_to_object_name(Arena* arena, const char* source_path) {
     return object_name;
 }
 
-static Result link_executable(CatalyzeConfig* config, const char* path_prefix, Target* build_target, char** all_flags, uint8_t flag_count, char** all_object_files) {
+Result link_executable(CatalyzeConfig* config, const char* path_prefix, Target* build_target, char** all_flags, uint8_t flag_count, char** all_object_files) {
     size_t size = 32 + strlen(config -> compiler) + 1; 
     size += strlen(path_prefix) + 1;
     size += strlen(build_target -> output_dir);

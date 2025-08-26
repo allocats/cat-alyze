@@ -5,6 +5,7 @@
 #include "config/config.h"
 
 #include "core/build.h"
+#include "core/debug.h"
 #include "core/init.h"
 #include "core/new.h"
 #include "core/run.h"
@@ -78,6 +79,52 @@ int main(int argc, char *argv[]) {
                 print_help();
                 arena_free(&arena);
                 return 1;
+            }
+            break;
+
+        case 'd':
+            if (strcmp(argv[1], "debug") == 0) {
+                result = parse_config(&arena);
+
+                if (IS_ERR(result)) {
+                    print_err(ERR_MSG(result));
+                    arena_free(&arena);
+                    return 1;
+                }
+
+                config = (CatalyzeConfig*) result.data; 
+
+                Timer timer;
+                if (argc == 2) {
+                    timer_start(&timer);
+                    result = debug_all(&arena, config);
+                    timer_end(&timer);
+
+                    if (IS_ERR(result)) {
+                        print_err(ERR_MSG(result));
+                        arena_free(&arena);
+                        return 1;
+                    }
+
+                    printf("\nCompiling \e[1mfinished\e[0m! Built all targets. Took %.3f seconds\n", timer_elapsed_seconds(&timer));
+                } else {
+                    uint8_t i = 2;
+
+                    timer_start(&timer);
+                    while (i < argc) {
+                        result = debug_target(&arena, config, argv[i]);
+
+                        if (IS_ERR(result)) {
+                            print_err(ERR_MSG(result));
+                            arena_free(&arena);
+                            return 1;
+                        }
+
+                        i++;
+                    }
+                    timer_end(&timer);
+                    printf("\nCompiling \e[1mfinished\e[0m! Built all targets. Took %.3f seconds\n", timer_elapsed_seconds(&timer));
+                }
             }
             break;
 
