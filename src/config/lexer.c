@@ -328,12 +328,16 @@ static Result parse_config_section(Lexer* lexer) {
     Result result;
 
     result = expect_keyword(lexer, "config");
-    if (IS_ERR(result)) return result;
+    if (IS_ERR(result)) {
+        return err(ERR_MSG(result));
+    }
 
     skip_whitespace(lexer);
 
     result = expect_char(lexer, '{');
-    if (IS_ERR(result)) return result;
+    if (IS_ERR(result)) {
+        return err(ERR_MSG(result));
+    }
 
     skip_whitespace(lexer);
     while (lexer -> c != '}') {
@@ -350,33 +354,50 @@ static Result parse_target_section(Lexer* lexer) {
     Result result;
 
     result = expect_keyword(lexer, "target");
-    if (IS_ERR(result)) return result;
-
+    if (IS_ERR(result)) {
+        return err(ERR_MSG(result));
+    }
 
     skip_whitespace(lexer);
 
     if (IS_ALPHA(lexer -> c)) {
         char type[32];
         result = parse_identifier(lexer, type, sizeof(type));
-        if (IS_ERR(result)) return result;
+        if (IS_ERR(result)) {
+            return err(ERR_MSG(result));
+        }
 
         switch (type[0]) {
             case 'e':
-                if (strcmp(type, "executable") == 0) lexer -> config -> targets[lexer -> config -> target_count].type = Executable;
-                break;
+                if (strcmp(type, "executable") == 0) {
+                    lexer -> config -> targets[lexer -> config -> target_count].type = Executable;
+                    break;
+                }
+                return err("Unknown target type");
 
             case 't':
-                if (strcmp(type, "test") == 0) lexer -> config -> targets[lexer -> config -> target_count].type = Test;
-                break;
+                if (strcmp(type, "test") == 0) {
+                    lexer -> config -> targets[lexer -> config -> target_count].type = Test;
+                    break;
+                }
+                return err("Unknown target type");
 
             case 'd':
-                if (strcmp(type, "debug") == 0) lexer -> config -> targets[lexer -> config -> target_count].type = Debug;
-                break;
+                if (strcmp(type, "debug") == 0) {
+                    lexer -> config -> targets[lexer -> config -> target_count].type = Debug;
+                    break;
+                }
+                return err("Unknown target type");
 
             case 's':
-                if (strcmp(type, "static_lib") == 0) lexer -> config -> targets[lexer -> config -> target_count].type = StaticLib;
-                if (strcmp(type, "shared_lib") == 0) lexer -> config -> targets[lexer -> config -> target_count].type = SharedLib;
-                break;
+                if (strcmp(type, "static_lib") == 0) {
+                    lexer -> config -> targets[lexer -> config -> target_count].type = StaticLib;
+                    break;
+                } else if (strcmp(type, "shared_lib") == 0) {
+                    lexer -> config -> targets[lexer -> config -> target_count].type = SharedLib;
+                    break;
+                }
+                return err("Unknown target type");
 
             default:
                 lexer_err(lexer, "Uknown target type");
@@ -393,7 +414,9 @@ static Result parse_target_section(Lexer* lexer) {
     skip_whitespace(lexer);
 
     result = expect_char(lexer, '{');
-    if (IS_ERR(result)) return result;
+    if (IS_ERR(result)) {
+        return err(ERR_MSG(result));
+    }
 
     skip_whitespace(lexer);
 
@@ -421,7 +444,9 @@ Result lexer_parse(Arena* arena, const char* buffer, uint8_t nest_count) {
 
     skip_whitespace(lexer);
     result = parse_config_section(lexer);
-    if (IS_ERR(result)) return result;
+    if (IS_ERR(result)) {
+        return err(ERR_MSG(result));
+    }
 
     skip_whitespace(lexer);
     while (lexer -> c == 't' && lexer -> config -> target_count < MAX_TARGETS) {

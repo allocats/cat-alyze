@@ -47,7 +47,9 @@ Result parse_config(Arena* arena) {
 
     FILE* fptr = fopen(path.data, "r");
 
-    if (!fptr) return err("failed to open config.cat");
+    if (!fptr) {
+        return err("failed to open config.cat");
+    }
     
     fseek(fptr, 0, SEEK_END);
     uint32_t len = ftell(fptr);
