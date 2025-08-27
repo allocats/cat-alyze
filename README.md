@@ -125,8 +125,6 @@ target executable hello {
 #### Planned
 
 - Testing and a test framework
-- Debug target support
 - Static & Shared library target support
 - File auto discovery 
 - Optimised building, only rebuild when needed to
-- Package manager like features
