@@ -18,7 +18,7 @@ Result make_build_dir(const char* dir) {
     return ok(NULL);
 }
 
-Result make_bin_dir(const char* dir) {
+Result make_output_dir(const char* dir) {
     size_t mkdir_size = 32 + MAX_BUILD_DIR_LEN;
     char mkdir_cmd[mkdir_size];
 
@@ -103,7 +103,7 @@ Result build_project_target(Arena* arena, CatalyzeConfig* config, const char* ta
         return err("Target not found");
     }
 
-    result = make_bin_dir(build_target -> output_dir);
+    result = make_output_dir(build_target -> output_dir);
     if (IS_ERR(result)) {
         return err(ERR_MSG(result));
     }
@@ -198,7 +198,9 @@ Result build_project_all(Arena* arena, CatalyzeConfig* config) {
             return err("Target not found");
         }
 
-        result = make_bin_dir(build_target -> output_dir);
+        if (build_target -> type == Debug || build_target -> type == Test) continue;
+
+        result = make_output_dir(build_target -> output_dir);
         if (IS_ERR(result)) {
             return err(ERR_MSG(result));
         }

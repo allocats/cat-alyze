@@ -16,7 +16,7 @@ static Result build_debug_target(Arena* arena, CatalyzeConfig* config, Target* t
         return err(ERR_MSG(result));
     }
 
-    result = make_bin_dir(target -> output_dir);
+    result = make_output_dir(target -> output_dir);
     if (IS_ERR(result)) {
         return err(ERR_MSG(result));
     }
