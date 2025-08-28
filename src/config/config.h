@@ -29,28 +29,25 @@ typedef enum {
 typedef struct {
     TargetType type;
     char name[MAX_NAME_LEN];
-
     char sources[MAX_SOURCES][MAX_SOURCE_LEN];
-    uint8_t source_count;
-
     char flags[MAX_FLAGS][MAX_FLAG_LEN];
-    uint16_t flag_count;
+
+    uint8_t source_count : 4;
+    uint8_t flag_count : 4;
 
     char output_dir[MAX_OUTPUT_DIR_LEN];
     char output_name[MAX_OUTPUT_NAME_LEN];
 } Target;
 
 typedef struct {
-    uint8_t nest_count;
+    uint8_t nest_count : 4;
+    uint8_t target_count : 4;
 
     char compiler[MAX_COMPILER_LEN];
     char default_flags[MAX_FLAGS][MAX_FLAG_LEN];
-    uint16_t default_flag_count;
-
+    uint8_t default_flag_count;
     char build_dir[MAX_BUILD_DIR_LEN];
-
     Target targets[MAX_TARGETS]; 
-    uint8_t target_count;
 } CatalyzeConfig;
 
 Result find_config_file(Arena* arena, uint8_t* nest_count);

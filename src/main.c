@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -21,213 +22,175 @@ static void print_err(const char* msg) {
     fprintf(stderr, "\e[1mError:\e[0m %s\n", msg);
 }
 
-int main(int argc, char *argv[]) {
-    if (argc < 2 || argc > 18) {
-        print_help();
-        arena_free(&arena);
+typedef struct {
+    const char* name;
+    int (*handler)(int argc, char* argv[]);
+    uint8_t min_args;
+    uint8_t max_args;
+    bool config;
+} Command;
+
+static int handle_build(int argc, char* argv[]);
+static int handle_debug(int argc, char* argv[]);
+static int handle_init(int argc, char* argv[]);
+static int handle_new(int argc, char* argv[]);
+static int handle_run(int argc, char* argv[]);
+
+static const Command commands[] = {
+    {"build", handle_build, 2, 18, true},
+    {"debug", handle_debug, 2, 18, true}, 
+    {"init",  handle_init,  2, 2,  false},
+    {"new",   handle_new,   3, 3,  false},
+    {"run",   handle_run,   2, 3,  true},
+    {NULL,    NULL,         0, 0,  false} 
+};
+
+static int handle_build(int argc, char* argv[]) {
+    Result result = parse_config(&arena);
+    if (IS_ERR(result)) {
+        print_err(ERR_MSG(result));
         return 1;
     }
 
-    CatalyzeConfig* config; // allocated in lexer_parse() called and returned by parse_config()
-    Result result;
+    CatalyzeConfig* config = (CatalyzeConfig*) result.data;
+    Timer timer;
+    timer_start(&timer);
 
-    switch (argv[1][0]) {
-        case 'b':
-            if (strcmp(argv[1], "build") == 0) {
-                result = parse_config(&arena);
+    if (argc == 2) {
+        result = build_project_all(&arena, config);
 
-                if (IS_ERR(result)) {
-                    print_err(ERR_MSG(result));
-                    arena_free(&arena);
-                    return 1;
-                }
-
-                config = (CatalyzeConfig*) result.data; 
-
-                Timer timer;
-                if (argc == 2) {
-                    timer_start(&timer);
-                    result = build_project_all(&arena, config);
-                    timer_end(&timer);
-
-                    if (IS_ERR(result)) {
-                        print_err(ERR_MSG(result));
-                        arena_free(&arena);
-                        return 1;
-                    }
-
-                    printf("\nCompiling \e[1mfinished\e[0m! Built all targets. Took %.3f seconds\n", timer_elapsed_seconds(&timer));
-                } else {
-                    uint8_t i = 2;
-
-                    timer_start(&timer);
-                    while (i < argc) {
-                        result = build_project_target(&arena, config, argv[i]);
-
-                        if (IS_ERR(result)) {
-                            print_err(ERR_MSG(result));
-                            arena_free(&arena);
-                            return 1;
-                        }
-
-                        i++;
-                    }
-                    timer_end(&timer);
-                    printf("\nCompiling \e[1mfinished\e[0m! Built all targets. Took %.3f seconds\n", timer_elapsed_seconds(&timer));
-                }
-            } else {
-                print_help();
-                arena_free(&arena);
-                return 1;
-            }
-            break;
-
-        case 'd':
-            if (strcmp(argv[1], "debug") == 0) {
-                result = parse_config(&arena);
-
-                if (IS_ERR(result)) {
-                    print_err(ERR_MSG(result));
-                    arena_free(&arena);
-                    return 1;
-                }
-
-                config = (CatalyzeConfig*) result.data; 
-
-                Timer timer;
-                if (argc == 2) {
-                    timer_start(&timer);
-                    result = debug_all(&arena, config);
-                    timer_end(&timer);
-
-                    if (IS_ERR(result)) {
-                        print_err(ERR_MSG(result));
-                        arena_free(&arena);
-                        return 1;
-                    }
-
-                    printf("\nCompiling \e[1mfinished\e[0m! Built all targets. Took %.3f seconds\n", timer_elapsed_seconds(&timer));
-                } else {
-                    uint8_t i = 2;
-
-                    timer_start(&timer);
-                    while (i < argc) {
-                        result = debug_target(&arena, config, argv[i]);
-
-                        if (IS_ERR(result)) {
-                            print_err(ERR_MSG(result));
-                            arena_free(&arena);
-                            return 1;
-                        }
-
-                        i++;
-                    }
-                    timer_end(&timer);
-                    printf("\nCompiling \e[1mfinished\e[0m! Built all targets. Took %.3f seconds\n", timer_elapsed_seconds(&timer));
-                }
-            }
-            break;
-
-        case 'i':
-            if (strcmp(argv[1], "init") == 0) {
-                if (argc != 2) {
-                    print_err("Invalid, expects: catalyze init");
-                    arena_free(&arena);
-                    return 1;
-                }
-
-                result = init_project();
-                if (IS_ERR(result)) {
-                    print_err(ERR_MSG(result));
-                    arena_free(&arena);
-                    return 1;
-                }
-
-                printf("\nCreated! Happy coding!\n");
-            } else {
-                print_help();
-                arena_free(&arena);
-                return 1;
-            }
-            break;
-
-        case 'n':
-            if (strcmp(argv[1], "new") == 0) {
-                if (argc != 3) {
-                    print_err("Invalid, expects: catalyze new [name]");
-                    arena_free(&arena);
-                    return 1;
-                }
-
-                result = new_project(argv[2]);
-                if (IS_ERR(result)) {
-                    print_err(ERR_MSG(result));
-                    arena_free(&arena);
-                    return 1;
-                }
-
-                printf("\nCreated \e[1m%s\e[0m! Happy coding!\n", argv[2]);
-            } else {
-                print_help();
-                arena_free(&arena);
-                return 1;
-            }
-            break;
-
-        case 'r':
-            if (strcmp(argv[1], "run") == 0) {
-                if (argc == 2) {
-                    result = parse_config(&arena);
-
-                    if (IS_ERR(result)) {
-                        print_err(ERR_MSG(result));
-                        arena_free(&arena);
-                        return 1;
-                    }
-
-                    config = (CatalyzeConfig*) result.data; 
-                    result = run_project_all(&arena, config);
-
-                    if (IS_ERR(result)) {
-                        print_err(ERR_MSG(result));
-                        arena_free(&arena);
-                        return 1;
-                    }
-                } else if (argc == 3) {
-                    result = parse_config(&arena);
-
-                    if (IS_ERR(result)) {
-                        print_err(ERR_MSG(result));
-                        arena_free(&arena);
-                        return 1;
-                    }
-
-                    config = (CatalyzeConfig*) result.data; 
-                    result = run_project_target(&arena, config, argv[2]);
-
-                    if (IS_ERR(result)) {
-                        print_err(ERR_MSG(result));
-                        arena_free(&arena);
-                        return 1;
-                    }
-                } else {
-                    print_err("Invalid, expects: catalyze run [name] - Name is optional");
-                    arena_free(&arena);
-                    return 1;
-                }
-            } else {
-                print_help();
-                arena_free(&arena);
-                return 1;
-            }
-            break;
-
-        default:
-            print_help();
-            arena_free(&arena);
+        if (IS_ERR(result)) {
+            print_err(ERR_MSG(result));
             return 1;
+        }
+    } else {
+        for (uint8_t i = 2; i < argc; i++) {
+            result = build_project_target(&arena, config, argv[i]);
+
+            if (IS_ERR(result)) {
+                print_err(ERR_MSG(result));
+                return 1;
+            }
+        }
     }
 
-    arena_free(&arena);
+    timer_end(&timer);
+    printf("\nCompiling \e[1mfinished\e[0m! Built all targets. Took %.3f seconds\n", timer_elapsed_seconds(&timer));
+
+    return 1;
+}
+
+static int handle_debug(int argc, char* argv[]) {
+    Result result = parse_config(&arena);
+    if (IS_ERR(result)) {
+        print_err(ERR_MSG(result));
+        return 1;
+    }
+
+    CatalyzeConfig* config = (CatalyzeConfig*) result.data;
+    Timer timer;
+    timer_start(&timer);
+
+    if (argc == 2) {
+        result = debug_all(&arena, config);
+
+        if (IS_ERR(result)) {
+            print_err(ERR_MSG(result));
+            return 1;
+        }
+    } else {
+        for (uint8_t i = 2; i < argc; i++) {
+            result = debug_target(&arena, config, argv[i]);
+
+            if (IS_ERR(result)) {
+                print_err(ERR_MSG(result));
+                return 1;
+            }
+        }
+    }
+
+    timer_end(&timer);
+    printf("\nCompiling \e[1mfinished\e[0m! Built all targets. Took %.3f seconds\n", timer_elapsed_seconds(&timer));
+    return 1;
+}
+
+static int handle_init(int argc, char* argv[]) {
+    Result result = init_project();
+    if (IS_ERR(result)) {
+        print_err(ERR_MSG(result));
+        return 1;
+    }
+
+    printf("\nCreated! Good luck with your project!\n");
     return 0;
+}
+
+static int handle_new(int argc, char* argv[]) {
+    Result result = new_project(argv[2]);
+    if (IS_ERR(result)) {
+        print_err(ERR_MSG(result));
+        return 1;
+    }
+
+    printf("\nCreated \e[1m%s\e[0m! Good luck coding and have fun :3!\n", argv[2]);
+    return 0;
+}
+
+static int handle_run(int argc, char* argv[]) {
+    Result result = parse_config(&arena);
+    if (IS_ERR(result)) {
+        print_err(ERR_MSG(result));
+        return 1;
+    }
+
+    CatalyzeConfig* config = (CatalyzeConfig*) result.data;
+
+    if (argc == 2) {
+        result = run_project_all(&arena, config);
+    } else {
+        result = run_project_target(&arena, config, argv[2]);
+    }
+
+    if (IS_ERR(result)) {
+        print_err(ERR_MSG(result));
+        return 1;
+    }
+
+    return 0;
+}
+
+static const Command* find_command(const char* name) {
+    for (const Command* cmd = commands; cmd -> name != NULL; cmd++) {
+        if (strcmp(cmd -> name, name) == 0) {
+            return cmd;
+        }
+    }
+
+    return NULL;
+}
+
+static void cleanup_and_exit(int code) {
+    arena_free(&arena);
+    exit(code);
+}
+
+int main(int argc, char* argv[]) {
+    if (argc < 2 || argc > 18) {
+        print_help();
+        cleanup_and_exit(1);
+    }
+
+    const Command* cmd = find_command(argv[1]);
+    if (cmd == NULL) {
+        print_help();
+        cleanup_and_exit(1);
+    }
+
+    if (argc < cmd -> min_args || argc > cmd -> max_args) {
+        print_err("Invalid number of arguments");
+        cleanup_and_exit(1);
+    }
+
+    int result = cmd -> handler(argc, argv);
+    cleanup_and_exit(0);
 }
