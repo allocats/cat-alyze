@@ -2,9 +2,12 @@
 #include "lexer.h"
 
 #include <dirent.h>
+#include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 Result find_config_file(Arena* arena, uint8_t* nest_count) {
@@ -45,21 +48,27 @@ Result parse_config(Arena* arena) {
         return err(ERR_MSG(path));
     } 
 
-    FILE* fptr = fopen(path.data, "r");
-
-    if (!fptr) {
-        return err("failed to open config.cat");
+    int fd = open(path.data, O_RDONLY);
+    if (fd == -1) {
+        return err("Failed to open config.cat");
     }
-    
-    fseek(fptr, 0, SEEK_END);
-    uint32_t len = ftell(fptr);
-    fseek(fptr, 0, SEEK_SET);
 
-    char* buffer = arena_alloc(arena, len + 1);
-    fread(buffer, 1, len, fptr); 
-    buffer[len] = '\0';
+    struct stat st;
+    if (fstat(fd, &st) == -1) {
+        return err("Failed to get stats about config.cat");
+    }
 
-    fclose(fptr);
+    char* data = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (data == MAP_FAILED) {
+        return err("Failed to allocate buffer for config.cat");
+    }
+
+    char* buffer = arena_alloc(arena, st.st_size + 1);
+    arena_memcpy(buffer, data, st.st_size);
+    munmap(data, st.st_size);
+    close(fd);
+
+    buffer[st.st_size] = '\0';
 
     return lexer_parse(arena, buffer, nest_count);
 }
