@@ -1,6 +1,6 @@
 # cat-alayze
 
-My personal build system for C projects. Why? You might ask, well I got tired of writing makefiles over and over again, and CMake was not very appealing to me. I love working in Rust, so I thought why not build a Cargo like system for C! It is not the greatest and far from complete, but it works and something I am enjoy using as well proud of. 
+My personal build system for C projects. Why? You might ask, well I got tired of writing makefiles over and over again, and CMake was not very appealing to me. I love working in Rust, so I thought why not build a Cargo like system for C! It is not the greatest and far from complete, but it works and something I am enjoy using as well proud of. It is pretty lightweight and I am trying my best to optimise it, as it stands the parsing is rougly hitting ~900 microseconds on my machine with 65k memory. Making use of my own arena as well, so mostly memory safe :3
 
 ## Quick Start
 
