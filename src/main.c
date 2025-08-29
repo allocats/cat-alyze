@@ -35,6 +35,7 @@ static int handle_debug(int argc, char* argv[]);
 static int handle_init(int argc, char* argv[]);
 static int handle_new(int argc, char* argv[]);
 static int handle_run(int argc, char* argv[]);
+static int handle_test(int argc, char* argv[]);
 
 static const Command commands[] = {
     {"build", handle_build, 2, 18, true},
@@ -42,6 +43,7 @@ static const Command commands[] = {
     {"init",  handle_init,  2, 2,  false},
     {"new",   handle_new,   3, 3,  false},
     {"run",   handle_run,   2, 3,  true},
+    {"test",  handle_test,   2, 3,  true},
     {NULL,    NULL,         0, 0,  false} 
 };
 
@@ -137,6 +139,31 @@ static int handle_new(int argc, char* argv[]) {
 }
 
 static int handle_run(int argc, char* argv[]) {
+    Result result = parse_config(&arena);
+    if (IS_ERR(result)) {
+        print_err(ERR_MSG(result));
+        return 1;
+    }
+
+    CatalyzeConfig* config = (CatalyzeConfig*) result.data;
+
+    if (argc == 2) {
+        result = run_project_all(&arena, config);
+    } else {
+        result = run_project_target(&arena, config, argv[2]);
+    }
+
+    if (IS_ERR(result)) {
+        print_err(ERR_MSG(result));
+        return 1;
+    }
+
+    return 0;
+}
+
+static int handle_test(int argc, char* argv[]) {
+    // TODO: Testing lol
+    
     Result result = parse_config(&arena);
     if (IS_ERR(result)) {
         print_err(ERR_MSG(result));

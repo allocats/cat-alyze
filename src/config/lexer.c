@@ -92,7 +92,7 @@ static void skip_spaces(Lexer* lexer) {
     } 
 }
 
-static Result parse_single(Lexer* lexer, char* dest, size_t max_len) {
+static Result parse_single(Lexer* lexer, char** dest, size_t max_len) {
     const char* start = &lexer -> buffer[lexer -> current];
     while (IS_ALPHA(lexer -> c)) {
         advance(lexer);
@@ -105,8 +105,8 @@ static Result parse_single(Lexer* lexer, char* dest, size_t max_len) {
         return err("Parsing failed");
     }
 
-    strncpy(dest, start, len);
-    dest[len] = '\0';
+    set_single(lexer -> arena, dest, start, &len);
+
     return ok(NULL);
 }
 
@@ -128,12 +128,10 @@ static Result parse_default_flags(Lexer* lexer) {
             return err("Invalid flag");
         }
 
-        strncpy(lexer -> config -> default_flags[i], flag_start, flag_len);
-        lexer -> config -> default_flags[i][flag_len] = '\0';
+        push_default_flag(lexer -> arena, lexer -> config, flag_start, &flag_len);
         i++;
     }
 
-    lexer -> config -> default_flag_count = i;
     return ok(NULL);
 }
 
@@ -156,12 +154,10 @@ static Result parse_target_flags(Lexer* lexer) {
             return err("Invalid flag");
         }
 
-        strncpy(lexer -> config -> targets[i].flags[count], flag_start, flag_len);
-        lexer -> config -> targets[i].flags[count][flag_len] = '\0';
+        push_flag(lexer -> arena, lexer -> config, flag_start, &flag_len);
         count++;
     }
 
-    lexer -> config -> targets[i].flag_count = count;
     return ok(NULL);
 }
 
@@ -184,17 +180,15 @@ static Result parse_sources(Lexer* lexer) {
             return err("Invalid source");
         }
 
-        strncpy(lexer -> config -> targets[i].sources[count], source_start, source_len);
-        lexer -> config -> targets[i].sources[count][source_len] = '\0';
+        push_source(lexer -> arena, lexer -> config, source_start, &source_len);
         count++;
     }
 
-    lexer -> config -> targets[i].source_count = count;
     return ok(NULL);
 }
 
 static Result parse_target_output(Lexer* lexer) {
-    Target* target = &lexer -> config -> targets[lexer -> config -> target_count];
+    Target* target = lexer -> config -> targets[lexer -> config -> target_count];
 
     const char* start = &lexer -> buffer[lexer -> current];
     while (IS_ALPHA(lexer -> c)) {
@@ -218,12 +212,10 @@ static Result parse_target_output(Lexer* lexer) {
     }
 
     size_t len = end - current;
-    strncpy(target -> output_name, current, len);
-    target -> output_name[len] = '\0';
+    set_output_name(lexer -> arena, lexer -> config, current, &len);
 
     len = current - start;
-    strncpy(target -> output_dir, start, len);
-    target -> output_dir[len] = '\0';
+    set_output_dir(lexer -> arena, lexer -> config, start, &len);
 
     return ok(NULL);
 }
@@ -234,11 +226,11 @@ static Result match_options(Lexer* lexer, const char* start, size_t len) {
 
     switch (start[0]) {
         case 'b':
-            if (strncmp(start, "build_dir", len) == 0) return parse_single(lexer, lexer -> config -> build_dir, MAX_BUILD_DIR_LEN);
+            if (strncmp(start, "build_dir", len) == 0) return parse_single(lexer, &lexer -> config -> build_dir, MAX_BUILD_DIR_LEN);
             break;
 
         case 'c':
-            if (strncmp(start, "compiler", len) == 0) return parse_single(lexer, lexer -> config -> compiler, MAX_COMPILER_LEN); 
+            if (strncmp(start, "compiler", len) == 0) return parse_single(lexer, &lexer -> config -> compiler, MAX_COMPILER_LEN); 
             break;
 
         case 'd':
@@ -307,7 +299,7 @@ static Result expect_char(Lexer* lexer, const char expected) {
     return ok(NULL);
 }
 
-static Result parse_identifier(Lexer* lexer, char* dest, size_t max_len) {
+static Result parse_identifier(Lexer* lexer, char** dest, size_t max_len) {
     const char* start = &lexer -> buffer[lexer -> current];
     while (IS_ALPHA(lexer ->c)) {
         advance(lexer);
@@ -319,8 +311,24 @@ static Result parse_identifier(Lexer* lexer, char* dest, size_t max_len) {
         return err("Parsing failed");
     }
 
-    strncpy(dest, start, len);
-    dest[len] = '\0';
+    set_single(lexer -> arena, dest, start, &len);
+    return ok(NULL);
+}
+
+static Result parse_identifier_into_buffer(Lexer* lexer, char* buffer, size_t buffer_size) {
+    const char* start = &lexer -> buffer[lexer -> current];
+    while (IS_ALPHA(lexer -> c)) {
+        advance(lexer);
+    }
+
+    size_t len = &lexer -> buffer[lexer -> current] - start;
+    if (len >= buffer_size) {
+        lexer_err(lexer, "Identifier too long");
+        return err("Parsing failed");
+    }
+
+    memcpy(buffer, start, len);
+    buffer[len] = '\0';
     return ok(NULL);
 }
 
@@ -362,7 +370,7 @@ static Result parse_target_section(Lexer* lexer) {
 
     if (IS_ALPHA(lexer -> c)) {
         char type[32];
-        result = parse_identifier(lexer, type, sizeof(type));
+        result = parse_identifier_into_buffer(lexer, type, sizeof(type));
         if (IS_ERR(result)) {
             return err(ERR_MSG(result));
         }
@@ -370,31 +378,31 @@ static Result parse_target_section(Lexer* lexer) {
         switch (type[0]) {
             case 'e':
                 if (strcmp(type, "executable") == 0) {
-                    lexer -> config -> targets[lexer -> config -> target_count].type = Executable;
+                    set_type(lexer -> arena, lexer -> config, Executable);
                     break;
                 }
                 return err("Unknown target type");
 
             case 't':
                 if (strcmp(type, "test") == 0) {
-                    lexer -> config -> targets[lexer -> config -> target_count].type = Test;
+                    set_type(lexer -> arena, lexer -> config, Test);
                     break;
                 }
                 return err("Unknown target type");
 
             case 'd':
                 if (strcmp(type, "debug") == 0) {
-                    lexer -> config -> targets[lexer -> config -> target_count].type = Debug;
+                    set_type(lexer -> arena, lexer -> config, Debug);
                     break;
                 }
                 return err("Unknown target type");
 
             case 's':
                 if (strcmp(type, "static_lib") == 0) {
-                    lexer -> config -> targets[lexer -> config -> target_count].type = StaticLib;
+                    set_type(lexer -> arena, lexer -> config, StaticLib);
                     break;
                 } else if (strcmp(type, "shared_lib") == 0) {
-                    lexer -> config -> targets[lexer -> config -> target_count].type = SharedLib;
+                    set_type(lexer -> arena, lexer -> config, SharedLib);
                     break;
                 }
                 return err("Unknown target type");
@@ -407,8 +415,8 @@ static Result parse_target_section(Lexer* lexer) {
 
     skip_whitespace(lexer);
 
-    Target* target = &lexer -> config -> targets[lexer -> config -> target_count];
-    result = parse_identifier(lexer, target -> name, MAX_NAME_LEN);
+    Target* target = lexer -> config -> targets[lexer -> config -> target_count];
+    result = parse_identifier(lexer, &target -> name, MAX_NAME_LEN);
     if (IS_ERR(result)) return result;
 
     skip_whitespace(lexer);
@@ -440,6 +448,7 @@ Result lexer_parse(Arena* arena, const char* buffer, uint8_t nest_count) {
     Result result;
 
     config -> target_count = 0;
+    config -> default_flag_count = 0;
     config -> nest_count = nest_count;
 
     skip_whitespace(lexer);
