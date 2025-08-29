@@ -162,26 +162,26 @@ static int handle_run(int argc, char* argv[]) {
 }
 
 static int handle_test(int argc, char* argv[]) {
-    // TODO: Testing lol
+    // TODO: Testing lol; For now i will just use this benchmark my parser
     
     Result result = parse_config(&arena);
     if (IS_ERR(result)) {
         print_err(ERR_MSG(result));
         return 1;
     }
-
-    CatalyzeConfig* config = (CatalyzeConfig*) result.data;
-
-    if (argc == 2) {
-        result = run_project_all(&arena, config);
-    } else {
-        result = run_project_target(&arena, config, argv[2]);
-    }
-
-    if (IS_ERR(result)) {
-        print_err(ERR_MSG(result));
-        return 1;
-    }
+    
+    // CatalyzeConfig* config = (CatalyzeConfig*) result.data;
+    //
+    // if (argc == 2) {
+    //     result = run_project_all(&arena, config);
+    // } else {
+    //     result = run_project_target(&arena, config, argv[2]);
+    // }
+    //
+    // if (IS_ERR(result)) {
+    //     print_err(ERR_MSG(result));
+    //     return 1;
+    // }
 
     return 0;
 }
