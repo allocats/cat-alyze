@@ -17,7 +17,7 @@ Result run_project_all(Arena* arena, CatalyzeConfig* config) {
     }
 
     for (uint8_t i = 0; i < config -> target_count; i++) {
-        Target* target = &config -> targets[i];
+        Target* target = config -> targets[i];
 
         if (target == NULL) {
             return err("Invalid target found");
@@ -48,8 +48,8 @@ Result run_project_target(Arena* arena, CatalyzeConfig* config, const char* targ
     Target* target = NULL;
 
     for (uint8_t i = 0; i < config -> target_count; i++) {
-        if (strcmp(config -> targets[i].name, target_name) == 0) {
-            target = &config -> targets[i];
+        if (strcmp(config -> targets[i] -> name, target_name) == 0) {
+            target = config -> targets[i];
             break;
         }
     }

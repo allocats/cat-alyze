@@ -93,8 +93,8 @@ Result build_project_target(Arena* arena, CatalyzeConfig* config, const char* ta
 
     Target* build_target = NULL;
     for (uint8_t i = 0; i < config -> target_count; i++) {
-        if (strcmp(target, config -> targets[i].name) == 0) {
-            build_target = &config -> targets[i];
+        if (strcmp(target, config -> targets[i] -> name) == 0) {
+            build_target = config -> targets[i];
             break;
         }
     }
@@ -192,7 +192,7 @@ Result build_project_all(Arena* arena, CatalyzeConfig* config) {
     }
 
     for (uint8_t current_target = 0; current_target < config -> target_count; current_target++) {
-        Target* build_target = &config -> targets[current_target];
+        Target* build_target = config -> targets[current_target];
 
         if (build_target == NULL) {
             return err("Target not found");

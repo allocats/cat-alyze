@@ -90,8 +90,8 @@ static Result run_debug_target(Arena* arena, CatalyzeConfig* config, const char*
     Target* target = NULL;
 
     for (uint8_t i = 0; i < config -> target_count; i++) {
-        if (config -> targets[i].type == Debug && strcmp(config -> targets[i].name, name) == 0) {
-            target = &config -> targets[i];
+        if (config -> targets[i] -> type == Debug && strcmp(config -> targets[i] -> name, name) == 0) {
+            target = config -> targets[i];
             break;
         }
     }
@@ -129,8 +129,8 @@ Result debug_all(Arena* arena, CatalyzeConfig* config) {
     uint8_t count = 0;
 
     for (uint8_t i = 0; i < config -> target_count; i++) {
-        if (config -> targets[i].type == Debug) {
-            result = run_debug_target(arena, config, config -> targets[i].name);
+        if (config -> targets[i] -> type == Debug) {
+            result = run_debug_target(arena, config, config -> targets[i] -> name);
 
             if (IS_ERR(result)) {
                 return err(ERR_MSG(result));
@@ -151,10 +151,10 @@ Result debug_target(Arena* arena, CatalyzeConfig* config, const char* name) {
     Result result;
 
     for (uint8_t i = 0; i < config -> target_count; i++) {
-        if (config -> targets[i].type != Debug && strcmp(config -> targets[i].name, name) == 0) {
+        if (config -> targets[i] -> type != Debug && strcmp(config -> targets[i] -> name, name) == 0) {
             return err("Target is not of debug type");
-        } else if (config -> targets[i].type != Debug && strcmp(config -> targets[i].name, name) == 0) {
-            result = run_debug_target(arena, config, config -> targets[i].name);
+        } else if (config -> targets[i] -> type != Debug && strcmp(config -> targets[i] -> name, name) == 0) {
+            result = run_debug_target(arena, config, config -> targets[i] -> name);
 
             if (IS_ERR(result)) {
                 return err(ERR_MSG(result));
