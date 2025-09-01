@@ -173,6 +173,10 @@ Result build_project_target(Arena* arena, CatalyzeConfig* config, const char* ta
             result = link_executable(config, path_prefix, build_target, all_flags, flag_count, all_object_files);
             break;
 
+        case Test:
+            result = link_executable(config, path_prefix, build_target, all_flags, flag_count, all_object_files);
+            break;
+
         default:
             return err("Unknown target");
     }
@@ -267,6 +271,10 @@ Result build_project_all(Arena* arena, CatalyzeConfig* config) {
                 break;
 
             case Debug:
+                result = link_executable(config, path_prefix, build_target, all_flags, flag_count, all_object_files);
+                break;
+
+            case Test:
                 result = link_executable(config, path_prefix, build_target, all_flags, flag_count, all_object_files);
                 break;
 
