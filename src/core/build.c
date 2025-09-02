@@ -128,15 +128,15 @@ Result build_project_target(Arena* arena, CatalyzeConfig* config, const char* ta
 
     char** all_object_files = arena_array(arena, char*, build_target -> source_count);
 
-    for (uint8_t i = 0; i < build_target -> source_count; i++) {
+    for (uint8_t k = 0; k < build_target -> source_count; k++) {
         size_t size = 32 + strlen(config -> compiler) + 1;
         for (int i = 0; i < flag_count; i++) {
             size += strlen(all_flags[i]) + 1;
         }
 
-        char* object_file = source_to_object_name(arena, build_target -> sources[i]);
+        char* object_file = source_to_object_name(arena, build_target -> sources[k]);
 
-        size += strlen(build_target -> sources[i]) + 1;
+        size += strlen(build_target -> sources[k]) + 1;
         size += strlen(path_prefix) + 1;
         size += strlen(config -> build_dir) + 1;
         size += strlen(object_file) + 1;
@@ -152,12 +152,12 @@ Result build_project_target(Arena* arena, CatalyzeConfig* config, const char* ta
         }
 
         offset += snprintf(cmd + offset, size - offset, " -c");
-        offset += snprintf(cmd + offset, size - offset, " %s%s", path_prefix, build_target -> sources[i]);
+        offset += snprintf(cmd + offset, size - offset, " %s%s", path_prefix, build_target -> sources[k]);
 
         offset += snprintf(cmd + offset, size - offset, " -o");
         offset += snprintf(cmd + offset, size - offset, " %s%s%s", path_prefix, config -> build_dir, object_file);
 
-        all_object_files[i] = arena_strdup(arena, object_file);
+        all_object_files[k] = arena_strdup(arena, object_file);
 
         if (system(cmd) != 0) {
             return err("Failed to compile");
@@ -229,15 +229,15 @@ Result build_project_all(Arena* arena, CatalyzeConfig* config) {
 
         char** all_object_files = arena_array(arena, char*, build_target -> source_count);
 
-        for (uint8_t i = 0; i < build_target -> source_count; i++) {
+        for (uint8_t k = 0; k < build_target -> source_count; k++) {
             size_t size = 32 + strlen(config -> compiler) + 1;
             for (int i = 0; i < flag_count; i++) {
                 size += strlen(all_flags[i]) + 1;
             }
 
-            char* object_file = source_to_object_name(arena, build_target -> sources[i]);
+            char* object_file = source_to_object_name(arena, build_target -> sources[k]);
 
-            size += strlen(build_target -> sources[i]) + 1;
+            size += strlen(build_target -> sources[k]) + 1;
             size += strlen(path_prefix) + 1;
             size += strlen(config -> build_dir) + 1;
             size += strlen(object_file) + 1;
@@ -253,12 +253,12 @@ Result build_project_all(Arena* arena, CatalyzeConfig* config) {
             }
 
             offset += snprintf(cmd + offset, size - offset, " -c");
-            offset += snprintf(cmd + offset, size - offset, " %s%s", path_prefix, build_target -> sources[i]);
+            offset += snprintf(cmd + offset, size - offset, " %s%s", path_prefix, build_target -> sources[k]);
 
             offset += snprintf(cmd + offset, size - offset, " -o");
             offset += snprintf(cmd + offset, size - offset, " %s%s%s", path_prefix, config -> build_dir, object_file);
 
-            all_object_files[i] = arena_strdup(arena, object_file);
+            all_object_files[k] = arena_strdup(arena, object_file);
 
             if (system(cmd) != 0) {
                 return err("Failed to compile");
