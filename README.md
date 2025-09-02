@@ -127,4 +127,4 @@ target executable hello {
 - Testing and a test framework
 - Static & Shared library target support
 - File auto discovery 
-- Optimised building, only rebuild when needed to
+- Optimised building, only rebuild when needed to, parallel building
