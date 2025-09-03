@@ -2,16 +2,20 @@
 #include "config.h"
 
 #include <dirent.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
+#include <time.h>
 
 #define IS_ALPHA(c) (char_map[(char)(c)] & 1)
 #define IS_WHITESPACE(c) (char_map[(char)(c)] & 2)
 #define IS_IDENTIFIER(c) (char_map[(char)(c)] & 4)
 #define IS_DELIM(c) (char_map[(char)(c)] & 8)
+
+static bool auto_discovery = false;
 
 static const uint8_t char_map[256] = {
     ['0' ... '9'] = 1,
@@ -34,6 +38,39 @@ static const uint8_t char_map[256] = {
     ['{'] = 8,
     ['}'] = 8,
 };
+
+static void find_c_files(Lexer* lexer, const char* start, size_t len) {
+    char dirpath[PATH_MAX];
+    snprintf(dirpath, sizeof(dirpath), "%.*s", (int)len, start);
+
+    DIR *dir = opendir(dirpath);
+    if (!dir) {
+        perror("opendir");
+        return;
+    }
+
+    struct dirent *entry;
+    char path[PATH_MAX];
+
+    while ((entry = readdir(dir)) != NULL) {
+        if (strcmp(entry -> d_name, ".") == 0 || strcmp(entry -> d_name, "..") == 0) {
+            continue;
+        }
+
+        snprintf(path, sizeof(path), "%s/%s", dirpath, entry -> d_name);
+        if (entry -> d_type == DT_DIR) {
+            find_c_files(lexer, path, strlen(path));
+        } else if (entry -> d_type == DT_REG) {
+            const char* ext = strrchr(entry -> d_name, '.');
+            if (ext && strcmp(ext, ".c") == 0) {
+                size_t len = strlen(path);
+                push_source(lexer -> arena, lexer -> config, path, &len);
+            }
+        }
+    }
+
+    closedir(dir);
+}
 
 static void lexer_err(Lexer* lexer, const char* msg) {
     int32_t line = 1;
@@ -180,7 +217,12 @@ static Result parse_sources(Lexer* lexer) {
             return err("Invalid source");
         }
 
-        push_source(lexer -> arena, lexer -> config, source_start, &source_len);
+        if (!auto_discovery) {
+            push_source(lexer -> arena, lexer -> config, source_start, &source_len);
+        } else {
+            find_c_files(lexer, source_start, source_len);
+        }
+
         count++;
     }
 
@@ -220,11 +262,32 @@ static Result parse_target_output(Lexer* lexer) {
     return ok(NULL);
 }
 
+Result parse_discovery(Lexer* lexer) {
+    const char* start = &lexer -> buffer[lexer -> current];
+    while (IS_ALPHA(lexer -> c)) {
+        advance(lexer);
+    }
+    const char* end = &lexer -> buffer[lexer -> current];
+    size_t len = end - start;
+
+    if (strncmp(start, "true", len) == 0) {
+        auto_discovery = true;
+    } else if (strncmp(start, "false", len) == 0) {
+        auto_discovery = false;
+    }
+
+    return ok(NULL);
+}
+
 static Result match_options(Lexer* lexer, const char* start, size_t len) {
     advance(lexer);
     skip_whitespace(lexer);
 
     switch (start[0]) {
+        case 'a':
+            if (strncmp(start, "auto_discovery", len) == 0) return parse_discovery(lexer);
+            break;
+
         case 'b':
             if (strncmp(start, "build_dir", len) == 0) return parse_single(lexer, &lexer -> config -> build_dir, MAX_BUILD_DIR_LEN);
             break;
@@ -465,7 +528,7 @@ Result lexer_parse(Arena* arena, const char* buffer, uint8_t nest_count) {
     }
 
     if (lexer -> config -> target_count == 0) {
-        lexer_err(lexer, "At least on target is required");
+        lexer_err(lexer, "At least one target is required");
         return err("No targets found");
     }
 
