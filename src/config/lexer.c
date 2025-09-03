@@ -274,6 +274,8 @@ Result parse_discovery(Lexer* lexer) {
         auto_discovery = true;
     } else if (strncmp(start, "false", len) == 0) {
         auto_discovery = false;
+    } else {
+        return err("Unknown value");
     }
 
     return ok(NULL);

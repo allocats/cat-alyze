@@ -39,24 +39,28 @@ config {
 }
 
 target executable myapp {
-    sources: src/main.c src/utils.c
+    auto_discover: true
+    sources: src/
     flags: -O3
     output: build/bin/myapp
 }
 
 target debug myapp_debug {
-	sources: src/main.c
-	flags: -O0 -g3 -fsanitize=address -fno-omit-frame-pointer
+    auto_discover: true
+	sources: src/
+	flags: -O0 -g3 -fsanitize=address -Weverything
 	output: build/debug/myapp_debug
 }
 
-target test unit_tests {
-    sources: src/*.c tests/test_main.c
-    flags: -g -DTEST_MODE
-    output: build/test/unit_tests
+target test myapp_tests {
+    auto_discover: false 
+    sources: tests/test_main.c
+    flags: -g -Weverything
+    output: build/test/myapp_tests
 }
 
-target static_lib mylib {
+target static_lib myapp_lib {
+    auto_discover: false 
     sources: src/lib.c src/utils.c
     flags: -fPIC
     output: build/lib/libmylib.a
@@ -78,7 +82,8 @@ target static_lib mylib {
 - `debug`: Debug builds with debugging symbols
 
 #### Target Options
-- `sources`: Source files to compile
+- `auto_discover`: Whether or not to enable auto file discovery (true or false) 
+- `sources`: Source files to compile or directories of source files to compile if `auto_discover` is set to true
 - `flags`: Additional compiler flags for this target
 - `output`: Output path and filename
 
@@ -114,7 +119,8 @@ config {
 }
 
 target executable hello {
-    sources: src/main.c
+    auto_discover: true
+    sources: src/
     flags: -O2
     output: build/bin/hello
 }
