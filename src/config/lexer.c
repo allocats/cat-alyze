@@ -57,14 +57,13 @@ static void find_c_files(Lexer* lexer, const char* start, size_t len) {
             continue;
         }
 
-        snprintf(path, sizeof(path), "%s/%s", dirpath, entry -> d_name);
+        size_t offset = snprintf(path, sizeof(path), "%s/%s", dirpath, entry -> d_name);
         if (entry -> d_type == DT_DIR) {
-            find_c_files(lexer, path, strlen(path));
+            find_c_files(lexer, path, offset);
         } else if (entry -> d_type == DT_REG) {
             const char* ext = strrchr(entry -> d_name, '.');
             if (ext && strcmp(ext, ".c") == 0) {
-                size_t len = strlen(path);
-                push_source(lexer -> arena, lexer -> config, path, &len);
+                push_source(lexer -> arena, lexer -> config, path, &offset);
             }
         }
     }
@@ -101,30 +100,18 @@ static Lexer* create_lexer(Arena* arena, CatalyzeConfig* config, const char* buf
     return lexer;
 }
 
-static void advance(Lexer* lexer) {
-    if (lexer -> current >= lexer -> len) {
-        lexer -> c = '\0';
-        return;
-    }
-
-    lexer -> current++;
-    if (lexer -> current >= lexer -> len) {
-        lexer -> c = '\0';
-    } else {
-        lexer -> c = lexer -> buffer[lexer -> current];
-    }
+static inline void advance(Lexer* lexer) {
+    lexer -> c = (++lexer -> current < lexer -> len) ? lexer -> buffer[lexer -> current] : '\0';
 }
 
-static void skip_whitespace(Lexer* lexer) {
+static inline void skip_whitespace(Lexer* lexer) {
     while (IS_WHITESPACE(lexer -> c)) {
-        if (lexer -> current >= lexer -> len) return;
         advance(lexer);
     } 
 }
 
-static void skip_spaces(Lexer* lexer) {
+static inline void skip_spaces(Lexer* lexer) {
     while (IS_WHITESPACE(lexer -> c) && lexer -> c != '\n') {
-        if (lexer -> current >= lexer -> len) return;
         advance(lexer);
     } 
 }

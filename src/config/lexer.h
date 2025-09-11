@@ -7,12 +7,12 @@
 #include <stdint.h>
 
 typedef struct {
+    char c;
+    const char* buffer;
+    size_t current;
+    size_t len;
     Arena* arena;
     CatalyzeConfig* config;
-    const char* buffer;
-    size_t len;
-    size_t current;
-    char c;
 } Lexer;
 
 Result lexer_parse(Arena* arena, const char* buffer, uint8_t nest_count);
