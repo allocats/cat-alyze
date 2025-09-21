@@ -15,8 +15,6 @@
 #define IS_IDENTIFIER(c) (char_map[(char)(c)] & 4)
 #define IS_DELIM(c) (char_map[(char)(c)] & 8)
 
-static bool auto_discovery = false;
-
 static const uint8_t char_map[256] = {
     ['0' ... '9'] = 1,
 
@@ -39,38 +37,6 @@ static const uint8_t char_map[256] = {
     ['}'] = 8,
 };
 
-static void find_c_files(Lexer* lexer, const char* start, size_t len) {
-    char dirpath[PATH_MAX];
-    snprintf(dirpath, sizeof(dirpath), "%.*s", (int)len, start);
-
-    DIR *dir = opendir(dirpath);
-    if (!dir) {
-        perror("opendir");
-        return;
-    }
-
-    struct dirent *entry;
-    char path[PATH_MAX];
-
-    while ((entry = readdir(dir)) != NULL) {
-        if (strcmp(entry -> d_name, ".") == 0 || strcmp(entry -> d_name, "..") == 0) {
-            continue;
-        }
-
-        size_t offset = snprintf(path, sizeof(path), "%s/%s", dirpath, entry -> d_name);
-        if (entry -> d_type == DT_DIR) {
-            find_c_files(lexer, path, offset);
-        } else if (entry -> d_type == DT_REG) {
-            const char* ext = strrchr(entry -> d_name, '.');
-            if (ext && strcmp(ext, ".c") == 0) {
-                push_source(lexer -> arena, lexer -> config, path, &offset);
-            }
-        }
-    }
-
-    closedir(dir);
-}
-
 static void lexer_err(Lexer* lexer, const char* msg) {
     int32_t line = 1;
     int32_t col = 1;
@@ -87,7 +53,7 @@ static void lexer_err(Lexer* lexer, const char* msg) {
     printf("\e[1mError in config.cat at line %d, column %d:\e[0m %s\n", line, col, msg);
 }
 
-static Lexer* create_lexer(Arena* arena, CatalyzeConfig* config, const char* buffer) {
+static Lexer* create_lexer(ArenaAllocator* arena, CatalyzeConfig* config, const char* buffer) {
     Lexer* lexer = arena_alloc(arena, sizeof(*lexer));
 
     lexer -> arena = arena;
@@ -204,12 +170,7 @@ static Result parse_sources(Lexer* lexer) {
             return err("Invalid source");
         }
 
-        if (!auto_discovery) {
-            push_source(lexer -> arena, lexer -> config, source_start, &source_len);
-        } else {
-            find_c_files(lexer, source_start, source_len);
-        }
-
+        push_source(lexer -> arena, lexer -> config, source_start, &source_len);
         count++;
     }
 
@@ -249,34 +210,11 @@ static Result parse_target_output(Lexer* lexer) {
     return ok(NULL);
 }
 
-Result parse_discovery(Lexer* lexer) {
-    const char* start = &lexer -> buffer[lexer -> current];
-    while (IS_ALPHA(lexer -> c)) {
-        advance(lexer);
-    }
-    const char* end = &lexer -> buffer[lexer -> current];
-    size_t len = end - start;
-
-    if (strncmp(start, "true", len) == 0) {
-        auto_discovery = true;
-    } else if (strncmp(start, "false", len) == 0) {
-        auto_discovery = false;
-    } else {
-        return err("Unknown value");
-    }
-
-    return ok(NULL);
-}
-
 static Result match_options(Lexer* lexer, const char* start, size_t len) {
     advance(lexer);
     skip_whitespace(lexer);
 
     switch (start[0]) {
-        case 'a':
-            if (strncmp(start, "auto_discovery", len) == 0) return parse_discovery(lexer);
-            break;
-
         case 'b':
             if (strncmp(start, "build_dir", len) == 0) return parse_single(lexer, &lexer -> config -> build_dir, MAX_BUILD_DIR_LEN);
             break;
@@ -492,7 +430,7 @@ static Result parse_target_section(Lexer* lexer) {
     return ok(NULL);
 }
 
-Result lexer_parse(Arena* arena, const char* buffer, uint8_t nest_count) {
+Result lexer_parse(ArenaAllocator* arena, const char* buffer, uint8_t nest_count) {
     CatalyzeConfig* config = arena_alloc(arena, sizeof(*config));
     arena_memset(config, 0, sizeof(*config));
 

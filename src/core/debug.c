@@ -9,7 +9,7 @@
 #include <string.h>
 #include <stdio.h>
 
-static Result build_debug_target(Arena* arena, CatalyzeConfig* config, Target* target) {
+static Result build_debug_target(ArenaAllocator* arena, CatalyzeConfig* config, Target* target) {
     Result result = make_build_dir(config -> build_dir);
 
     if (IS_ERR(result)) {
@@ -86,7 +86,7 @@ static Result build_debug_target(Arena* arena, CatalyzeConfig* config, Target* t
     return ok(NULL);
 }
 
-static Result run_debug_target(Arena* arena, CatalyzeConfig* config, const char* name) {
+static Result run_debug_target(ArenaAllocator* arena, CatalyzeConfig* config, const char* name) {
     Target* target = NULL;
 
     for (uint8_t i = 0; i < config -> target_count; i++) {
@@ -124,7 +124,7 @@ static Result run_debug_target(Arena* arena, CatalyzeConfig* config, const char*
     return ok(NULL);
 }
 
-Result debug_all(Arena* arena, CatalyzeConfig* config) {
+Result debug_all(ArenaAllocator* arena, CatalyzeConfig* config) {
     Result result;
     uint8_t count = 0;
 
@@ -147,7 +147,7 @@ Result debug_all(Arena* arena, CatalyzeConfig* config) {
     }
 }
 
-Result debug_target(Arena* arena, CatalyzeConfig* config, const char* name) {
+Result debug_target(ArenaAllocator* arena, CatalyzeConfig* config, const char* name) {
     Result result;
 
     for (uint8_t i = 0; i < config -> target_count; i++) {

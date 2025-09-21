@@ -51,22 +51,22 @@ typedef struct {
     char* build_dir;
 } __attribute__((aligned(8))) CatalyzeConfig;
 
-Result push_default_flag(Arena* arena, CatalyzeConfig* config, const char* start, size_t* len);
-Result push_flag(Arena* arena, CatalyzeConfig* config, const char* start, size_t* len);
-Result push_source(Arena* arena, CatalyzeConfig* config, const char* start, size_t* len);
+Result push_default_flag(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len);
+Result push_flag(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len);
+Result push_source(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len);
 
-Result set_compiler(Arena* arena, CatalyzeConfig* config, const char* start, size_t* len);
-Result set_build_dir(Arena* arena, CatalyzeConfig* config, const char* start, size_t* len);
+Result set_compiler(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len);
+Result set_build_dir(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len);
 
-Result set_single(Arena* arena, char** dest, const char* start, size_t* len);
+Result set_single(ArenaAllocator* arena, char** dest, const char* start, size_t* len);
 
-Result set_name(Arena* arena, CatalyzeConfig* config, const char* start, size_t* len);
-Result set_type(Arena* arena, CatalyzeConfig* config, TargetType type);
-Result set_output_dir(Arena* arena, CatalyzeConfig* config, const char* start, size_t* len);
-Result set_output_name(Arena* arena, CatalyzeConfig* config, const char* start, size_t* len);
+Result set_name(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len);
+Result set_type(ArenaAllocator* arena, CatalyzeConfig* config, TargetType type);
+Result set_output_dir(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len);
+Result set_output_name(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len);
 
-Result find_config_file(Arena* arena, uint8_t* nest_count);
-Result parse_config(Arena* arena);
+Result find_config_file(ArenaAllocator* arena, uint8_t* nest_count);
+Result parse_config(ArenaAllocator* arena);
 void print_config(const CatalyzeConfig* config);
 
 #endif // !CONFIG_H

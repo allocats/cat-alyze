@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-Result run_project_all(Arena* arena, CatalyzeConfig* config) {
+Result run_project_all(ArenaAllocator* arena, CatalyzeConfig* config) {
     Result result = build_project_all(arena, config);
 
     if (IS_ERR(result)) {
@@ -44,7 +44,7 @@ Result run_project_all(Arena* arena, CatalyzeConfig* config) {
     return ok(NULL);
 }
 
-Result run_project_target(Arena* arena, CatalyzeConfig* config, const char* target_name) {
+Result run_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const char* target_name) {
     Target* target = NULL;
 
     for (uint8_t i = 0; i < config -> target_count; i++) {

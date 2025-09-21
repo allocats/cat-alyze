@@ -32,7 +32,7 @@ Result make_output_dir(const char* dir) {
     return ok(NULL);
 }
 
-char* source_to_object_name(Arena* arena, const char* source_path) {
+char* source_to_object_name(ArenaAllocator* arena, const char* source_path) {
     const char* name = strrchr(source_path, '/');
     name = name ? name + 1 : source_path;
 
@@ -84,7 +84,7 @@ Result link_executable(CatalyzeConfig* config, const char* path_prefix, Target* 
     return ok(NULL);
 }
 
-Result build_project_target(Arena* arena, CatalyzeConfig* config, const char* target) {
+Result build_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const char* target) {
     Result result = make_build_dir(config -> build_dir);
 
     if (IS_ERR(result)) {
@@ -188,7 +188,7 @@ Result build_project_target(Arena* arena, CatalyzeConfig* config, const char* ta
     return ok(NULL);
 }
 
-Result build_project_all(Arena* arena, CatalyzeConfig* config) {
+Result build_project_all(ArenaAllocator* arena, CatalyzeConfig* config) {
     Result result = make_build_dir(config -> build_dir);
 
     if (IS_ERR(result)) {

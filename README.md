@@ -29,7 +29,7 @@ catalyze run myapp      # Run specific target
 
 ## Configuration
 
-Catalyze uses `.cat` configuration files with a clean, intuitive syntax:
+Catalyze uses `.cat` configuration files
 
 ```
 config {
@@ -39,28 +39,24 @@ config {
 }
 
 target executable myapp {
-    auto_discover: true
-    sources: src/
+    sources: src/main.c
     flags: -O3
     output: build/bin/myapp
 }
 
 target debug myapp_debug {
-    auto_discover: true
-	sources: src/
+	sources: src/main.c
 	flags: -O0 -g3 -fsanitize=address -Weverything
 	output: build/debug/myapp_debug
 }
 
 target test myapp_tests {
-    auto_discover: false 
     sources: tests/test_main.c
     flags: -g -Weverything
     output: build/test/myapp_tests
 }
 
 target static_lib myapp_lib {
-    auto_discover: false 
     sources: src/lib.c src/utils.c
     flags: -fPIC
     output: build/lib/libmylib.a
@@ -71,19 +67,18 @@ target static_lib myapp_lib {
 
 #### Global Config
 - `compiler`: The compiler to use (gcc, clang, etc.)
-- `build_dir`: Directory for build artifacts
+- `build_dir`: Directory for build objects
 - `default_flags`: Flags applied to all targets
 
 #### Target Types
 - `executable`: Standard executable programs
-- `test`: Test executables (built and run automatically)
+- `test`: Test executables 
 - `static_lib`: Static libraries (.a files)
 - `shared_lib`: Shared libraries (.so files)
 - `debug`: Debug builds with debugging symbols
 
 #### Target Options
-- `auto_discover`: Whether or not to enable auto file discovery (true or false) 
-- `sources`: Source files to compile or directories of source files to compile if `auto_discover` is set to true
+- `sources`: Source files to compile
 - `flags`: Additional compiler flags for this target
 - `output`: Output path and filename
 
@@ -119,8 +114,7 @@ config {
 }
 
 target executable hello {
-    auto_discover: true
-    sources: src/
+    sources: src/main.c
     flags: -O2
     output: build/bin/hello
 }

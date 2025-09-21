@@ -16,7 +16,7 @@
 #include "utils/result.h"
 #include "utils/timer.h"
 
-static Arena arena = {0};
+static ArenaAllocator arena = {0};
 
 static void print_err(const char* msg) {
     fprintf(stderr, "\e[1mError:\e[0m %s\n", msg);
@@ -43,7 +43,7 @@ static const Command commands[] = {
     {"init",  handle_init,  2, 2,  false},
     {"new",   handle_new,   3, 3,  false},
     {"run",   handle_run,   2, 3,  true},
-    {"test",  handle_test,   2, 3,  true},
+    {"test",  handle_test,  2, 3,  true},
     {NULL,    NULL,         0, 0,  false} 
 };
 
@@ -79,7 +79,7 @@ static int handle_build(int argc, char* argv[]) {
     timer_end(&timer);
     printf("\nCompiling \e[1mfinished\e[0m! Built all targets. Took %.3f seconds\n", timer_elapsed_seconds(&timer));
 
-    return 1;
+    return 0;
 }
 
 static int handle_debug(int argc, char* argv[]) {
@@ -113,7 +113,7 @@ static int handle_debug(int argc, char* argv[]) {
 
     timer_end(&timer);
     printf("\nCompiling \e[1mfinished\e[0m! Built all targets. Took %.3f seconds\n", timer_elapsed_seconds(&timer));
-    return 1;
+    return 0;
 }
 
 static int handle_init(int argc, char* argv[]) {
@@ -197,7 +197,7 @@ static const Command* find_command(const char* name) {
 }
 
 static void cleanup_and_exit(int code) {
-    arena_free(&arena);
+    // arena_free(&arena);
     exit(code);
 }
 
@@ -217,6 +217,8 @@ int main(int argc, char* argv[]) {
         print_err("Invalid number of arguments");
         cleanup_and_exit(1);
     }
+
+    init_arena(&arena, 0);
 
     int result = cmd -> handler(argc, argv);
     cleanup_and_exit(0);
