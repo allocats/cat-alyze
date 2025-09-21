@@ -113,18 +113,23 @@ void* arena_realloc(ArenaAllocator* arena, void* ptr, size_t old_size, size_t ne
 void* arena_memset(void* ptr, int value, size_t len) {
     char* p = (char*) ptr;
     char char_value = (char) value;
-    __m256i byte_value = _mm256_set1_epi8(char_value);
 
     while (len > 0 && ((uintptr_t) p & 31)) {
         *p++ = char_value;
         len--;
     }
 
+    __m256i byte_value = _mm256_set1_epi8(char_value);
     while (len >= 32) {
         _mm256_store_si256((__m256i*) p, byte_value);
 
         p += 32;
         len -= 32;
+    }
+
+    while (len > 0) {
+        *p++ = char_value;
+        len--;
     }
 
     return ptr;

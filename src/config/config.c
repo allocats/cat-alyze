@@ -49,7 +49,7 @@ Result push_flag(ArenaAllocator* arena, CatalyzeConfig* config, const char* star
     Target* target = config -> targets[config -> target_count];
     if (target == NULL) {
         target = arena_alloc(arena, sizeof(*target));
-        memset(target, 0, sizeof(*target));
+        arena_memset(target, 0, sizeof(*target));
 
         target -> source_count = 0;
         target -> flag_count = 0;
@@ -61,7 +61,7 @@ Result push_flag(ArenaAllocator* arena, CatalyzeConfig* config, const char* star
 
     if (target -> flags == NULL) {
         target -> flags = arena_alloc(arena, MAX_FLAGS * (sizeof(char*)));
-        memset(target -> flags, 0, *len);
+        arena_memset(target -> flags, 0, *len);
     }
 
     target -> flags[target -> flag_count] = arena_alloc(arena, *len + 1);
@@ -84,7 +84,7 @@ Result push_source(ArenaAllocator* arena, CatalyzeConfig* config, const char* st
     Target* target = config -> targets[config -> target_count];
     if (target == NULL) {
         target = arena_alloc(arena, sizeof(*target));
-        memset(target, 0, sizeof(*target));
+        arena_memset(target, 0, sizeof(*target));
 
         target -> source_count = 0;
         target -> flag_count = 0;
@@ -96,7 +96,7 @@ Result push_source(ArenaAllocator* arena, CatalyzeConfig* config, const char* st
 
     if (target -> sources == NULL) {
         target -> sources = arena_alloc(arena, MAX_SOURCES * (sizeof(char*)));
-        memset(target -> sources, 0, *len);
+        arena_memset(target -> sources, 0, *len);
     }
 
     target -> sources[target -> source_count] = arena_alloc(arena, *len + 1);
@@ -107,19 +107,18 @@ Result push_source(ArenaAllocator* arena, CatalyzeConfig* config, const char* st
     return ok(NULL);
 }
 
-Result set_single(ArenaAllocator* arena, char** dest, const char* start, size_t* len) {
-    if (*len >= MAX_COMPILER_LEN) {
-        return err("Compiler too long");
+Result set_single(ArenaAllocator* arena, char** dest, const char* start, size_t len) {
+    if (len >= MAX_NAME_LEN) {
+        return err("Field too long");
     }
 
     if (*dest == NULL) {
-        *dest = arena_alloc(arena, *len + 1);
-        memset((void*) *dest, 0, *len);
+        *dest = arena_alloc(arena, len + 1);
+        arena_memset((void*) *dest, 0, len + 1);
     }
 
-    memcpy((void*) *dest, start, *len);
-    (*dest)[*len] = '\0';
-
+    memcpy((void*) *dest, start, len);
+    (*dest)[len] = '\0';
     return ok(NULL);
 }
 
@@ -171,7 +170,7 @@ Result set_name(ArenaAllocator* arena, CatalyzeConfig* config, const char* start
     Target* target = config -> targets[config -> target_count];
     if (target == NULL) {
         target = arena_alloc(arena, sizeof(*target));
-        memset(target, 0, sizeof(*target));
+        arena_memset(target, 0, sizeof(*target));
 
         target -> source_count = 0;
         target -> flag_count = 0;
@@ -179,7 +178,7 @@ Result set_name(ArenaAllocator* arena, CatalyzeConfig* config, const char* start
 
     if (target -> name == NULL) {
         target -> name = arena_alloc(arena, *len + 1);
-        memset(target -> name, 0, *len);
+        arena_memset(target -> name, 0, *len);
     }
 
     memcpy(target -> name, start, *len);
@@ -195,13 +194,13 @@ Result set_type(ArenaAllocator* arena, CatalyzeConfig* config, TargetType type) 
 
     if (config -> targets == NULL) {
         config -> targets = arena_alloc(arena, MAX_TARGETS * sizeof(Target*));
-        memset(config -> targets, 0, MAX_TARGETS * sizeof(Target*));
+        arena_memset(config -> targets, 0, MAX_TARGETS * sizeof(Target*));
     }
 
     Target* target = config -> targets[config -> target_count];
     if (target == NULL) {
         target = arena_alloc(arena, sizeof(*target));
-        memset(target, 0, sizeof(*target));
+        arena_memset(target, 0, sizeof(*target));
         config -> targets[config -> target_count] = target;
     }
 
@@ -218,12 +217,12 @@ Result set_output_dir(ArenaAllocator* arena, CatalyzeConfig* config, const char*
     Target* target = config -> targets[config -> target_count];
     if (target == NULL) {
         target = arena_alloc(arena, sizeof(*target));
-        memset(target, 0, sizeof(*target));
+        arena_memset(target, 0, sizeof(*target));
     }
 
     if (target -> output_dir == NULL) {
         target -> output_dir = arena_alloc(arena, *len + 1);
-        memset(target -> output_dir, 0, *len);
+        arena_memset(target -> output_dir, 0, *len);
     }
 
     memcpy(target -> output_dir, start, *len);
@@ -241,12 +240,12 @@ Result set_output_name(ArenaAllocator* arena, CatalyzeConfig* config, const char
     Target* target = config -> targets[config -> target_count];
     if (target == NULL) {
         target = arena_alloc(arena, sizeof(*target));
-        memset(target, 0, sizeof(*target));
+        arena_memset(target, 0, sizeof(*target));
     }
 
     if (target -> output_name == NULL) {
         target -> output_name = arena_alloc(arena, *len + 1);
-        memset(target -> output_name, 0, *len);
+        arena_memset(target -> output_name, 0, *len);
     }
 
     memcpy(target -> output_name, start, *len);

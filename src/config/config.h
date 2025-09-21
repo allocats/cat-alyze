@@ -58,7 +58,7 @@ Result push_source(ArenaAllocator* arena, CatalyzeConfig* config, const char* st
 Result set_compiler(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len);
 Result set_build_dir(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len);
 
-Result set_single(ArenaAllocator* arena, char** dest, const char* start, size_t* len);
+Result set_single(ArenaAllocator* arena, char** dest, const char* start, size_t len);
 
 Result set_name(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len);
 Result set_type(ArenaAllocator* arena, CatalyzeConfig* config, TargetType type);

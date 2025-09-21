@@ -95,7 +95,7 @@ static Result parse_single(Lexer* lexer, char** dest, size_t max_len) {
         return err("Parsing failed");
     }
 
-    set_single(lexer -> arena, dest, start, &len);
+    set_single(lexer -> arena, dest, start, len);
 
     return ok(NULL);
 }
@@ -301,7 +301,7 @@ static Result parse_identifier(Lexer* lexer, char** dest, size_t max_len) {
         return err("Parsing failed");
     }
 
-    set_single(lexer -> arena, dest, start, &len);
+    set_single(lexer -> arena, dest, start, len);
     return ok(NULL);
 }
 
