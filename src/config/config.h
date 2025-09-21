@@ -32,8 +32,8 @@ typedef struct {
     char** sources;
     char** flags;
 
-    uint8_t source_count : 4;
-    uint8_t flag_count : 4;
+    uint8_t source_count;
+    uint8_t flag_count;
 
     char* output_dir;
     char* output_name;

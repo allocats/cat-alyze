@@ -110,7 +110,7 @@ void* arena_realloc(ArenaAllocator* arena, void* ptr, size_t old_size, size_t ne
     return result;
 }
 
-void* arena_memset(void* ptr, int value, size_t len) {
+inline void* arena_memset(void* ptr, int value, size_t len) {
     char* p = (char*) ptr;
     char char_value = (char) value;
 
@@ -135,7 +135,7 @@ void* arena_memset(void* ptr, int value, size_t len) {
     return ptr;
 }
 
-void* arena_memcpy(void* dest, const void* src, size_t len) {
+inline void* arena_memcpy(void* dest, const void* src, size_t len) {
     char* d = dest;
     const char* s = src;
 
@@ -154,7 +154,7 @@ void* arena_memcpy(void* dest, const void* src, size_t len) {
     return dest;
 }
 
-char* arena_strdup(ArenaAllocator* arena, const char* str) {
+inline char* arena_strdup(ArenaAllocator* arena, const char* str) {
     size_t len = strlen(str);
     char* duplicate = (char*) arena_alloc(arena, len + 1);
 

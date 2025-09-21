@@ -259,7 +259,6 @@ Result find_config_file(ArenaAllocator* arena, uint8_t* nest_count) {
     char* curr_path = arena_alloc(arena, MAX_PATH);
     getcwd(curr_path, MAX_PATH);
 
-    // little micro optimisation here, saved some nanoseconds :3 
     for (int i = 0; i < MAX_PATH >> 2; i++) {
         DIR* dir = opendir(curr_path);
         if (!dir) {
@@ -348,7 +347,7 @@ static void print_target(const Target* target) {
 }
 
 void print_config(const CatalyzeConfig* config) {
-    printf("=== CatalyzeConfig ===\n");
+    printf("=== CatalyzeConfig ===\n\n");
     printf("Compiler: %s\n", config -> compiler);
     printf("Build dir: %s\n", config -> build_dir);
     

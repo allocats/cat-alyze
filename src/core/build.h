@@ -6,6 +6,20 @@
 #include "../utils/arena.h"
 #include "../utils/result.h"
 
+#include <stdint.h>
+
+typedef struct {
+    ArenaAllocator* arena;
+    char* compiler;
+    char** all_flags;
+    uint8_t flag_count;
+    char* source;
+    char* path_prefix;
+    char* build_dir;
+    char*** all_object_files;
+    uint8_t idx;
+} Cmd;
+
 Result build_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const char* target);
 Result build_project_all(ArenaAllocator* arena, CatalyzeConfig* config);
 

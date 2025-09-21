@@ -1,8 +1,12 @@
 #include "build.h"
 
+#include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
+
+#define MAX_THREADS sysconf(_SC_NPROCESSORS_ONLN)
 
 Result make_build_dir(const char* dir) {
     size_t mkdir_size = 32 + MAX_BUILD_DIR_LEN;
@@ -49,15 +53,15 @@ char* source_to_object_name(ArenaAllocator* arena, const char* source_path) {
 Result link_executable(CatalyzeConfig* config, const char* path_prefix, Target* build_target, char** all_flags, uint8_t flag_count, char** all_object_files) {
     size_t size = 32 + strlen(config -> compiler) + 1; 
     size += strlen(path_prefix) + 1;
-    size += strlen(build_target -> output_dir);
-    size += strlen(build_target -> output_name);
+    size += strlen(build_target -> output_dir) + 1;
+    size += strlen(build_target -> output_name) + 1;
     
     for (uint8_t i = 0; i < flag_count; i++) {
         size += strlen(all_flags[i]) + 1;
     }
 
     for (uint8_t i = 0; i < build_target -> source_count; i++) {
-        size += strlen(all_object_files[i]) + 1;
+        size += strlen(all_object_files[i]) * 2;
         size += strlen(path_prefix) + 1;
     }
 
@@ -82,6 +86,46 @@ Result link_executable(CatalyzeConfig* config, const char* path_prefix, Target* 
     }
  
     return ok(NULL);
+}
+
+void* compile_object(void* arg) {
+    Cmd* cmd = (Cmd*) arg;
+
+    size_t size = 32 + strlen(cmd -> compiler) + 1;
+    for (int i = 0; i < cmd -> flag_count; i++) {
+        size += strlen(cmd -> all_flags[i]) + 1;
+    }
+
+    char* object_file = source_to_object_name(cmd -> arena, cmd -> source);
+
+    size += strlen(cmd -> source) + 1;
+    size += strlen(cmd -> path_prefix) + 1;
+    size += strlen(cmd -> build_dir) + 1;
+    size += strlen(object_file) + 1;
+    size += strlen(cmd -> path_prefix) + 1;
+
+    size = align_size(size);
+    char compile_command[size];
+
+    size_t offset = snprintf(compile_command, size, "%s", cmd -> compiler);
+
+    for (uint8_t i = 0; i < cmd -> flag_count; i++) {
+        offset += snprintf(compile_command + offset, size - offset, " %s", cmd -> all_flags[i]); 
+    }
+
+    offset += snprintf(compile_command + offset, size - offset, " -c");
+    offset += snprintf(compile_command + offset, size - offset, " %s%s", cmd -> path_prefix, cmd -> source);
+
+    offset += snprintf(compile_command + offset, size - offset, " -o");
+    offset += snprintf(compile_command + offset, size - offset, " %s%s%s", cmd -> path_prefix, cmd -> build_dir, object_file);
+
+    (*cmd -> all_object_files)[cmd -> idx] = arena_strdup(cmd -> arena, object_file);
+
+    if (system(compile_command) != 0) {
+        exit(1);
+    }
+
+    return NULL;
 }
 
 Result build_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const char* target) {
@@ -128,39 +172,33 @@ Result build_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const
 
     char** all_object_files = arena_array(arena, char*, build_target -> source_count);
 
-    for (uint8_t k = 0; k < build_target -> source_count; k++) {
-        size_t size = 32 + strlen(config -> compiler) + 1;
-        for (int i = 0; i < flag_count; i++) {
-            size += strlen(all_flags[i]) + 1;
+    int idx = 0;
+    int active_threads = 0;
+    pthread_t threads[MAX_THREADS];
+
+    while (idx < build_target -> source_count) {
+        active_threads = 0;
+
+        for (int i = 0; i < MAX_THREADS && idx < build_target -> source_count; i++) {
+            Cmd* cmd = arena_alloc(arena, sizeof(*cmd));
+
+            cmd -> all_object_files = &all_object_files;
+            cmd -> all_flags = all_flags;
+            cmd -> flag_count = flag_count;
+            cmd -> compiler = config -> compiler;
+            cmd -> arena = arena;
+            cmd -> source = build_target -> sources[idx];
+            cmd -> build_dir = config -> build_dir;
+            cmd -> path_prefix = path_prefix;
+            cmd -> idx = idx;
+
+            pthread_create(&threads[i], NULL, compile_object, cmd);
+            active_threads++;
+            idx++;
         }
 
-        char* object_file = source_to_object_name(arena, build_target -> sources[k]);
-
-        size += strlen(build_target -> sources[k]) + 1;
-        size += strlen(path_prefix) + 1;
-        size += strlen(config -> build_dir) + 1;
-        size += strlen(object_file) + 1;
-        size += strlen(path_prefix) + 1;
- 
-        size = align_size(size);
-        char cmd[size];
-
-        size_t offset = snprintf(cmd, size, "%s", config -> compiler);
-
-        for (uint8_t i = 0; i < flag_count; i++) {
-            offset += snprintf(cmd + offset, size - offset, " %s", all_flags[i]); 
-        }
-
-        offset += snprintf(cmd + offset, size - offset, " -c");
-        offset += snprintf(cmd + offset, size - offset, " %s%s", path_prefix, build_target -> sources[k]);
-
-        offset += snprintf(cmd + offset, size - offset, " -o");
-        offset += snprintf(cmd + offset, size - offset, " %s%s%s", path_prefix, config -> build_dir, object_file);
-
-        all_object_files[k] = arena_strdup(arena, object_file);
-
-        if (system(cmd) != 0) {
-            return err("Failed to compile");
+        for (int i = 0; i < active_threads; i++) {
+            pthread_join(threads[i], NULL);
         }
     }
 
@@ -229,39 +267,33 @@ Result build_project_all(ArenaAllocator* arena, CatalyzeConfig* config) {
 
         char** all_object_files = arena_array(arena, char*, build_target -> source_count);
 
-        for (uint8_t k = 0; k < build_target -> source_count; k++) {
-            size_t size = 32 + strlen(config -> compiler) + 1;
-            for (int i = 0; i < flag_count; i++) {
-                size += strlen(all_flags[i]) + 1;
+        int idx = 0;
+        int active_threads = 0;
+        pthread_t threads[MAX_THREADS];
+
+        while (idx < build_target -> source_count) {
+            active_threads = 0;
+
+            for (int i = 0; i < MAX_THREADS && idx < build_target -> source_count; i++) {
+                Cmd* cmd = arena_alloc(arena, sizeof(*cmd));
+
+                cmd -> all_object_files = &all_object_files;
+                cmd -> all_flags = all_flags;
+                cmd -> flag_count = flag_count;
+                cmd -> compiler = config -> compiler;
+                cmd -> arena = arena;
+                cmd -> source = build_target -> sources[idx];
+                cmd -> build_dir = config -> build_dir;
+                cmd -> path_prefix = path_prefix;
+                cmd -> idx = idx;
+
+                pthread_create(&threads[i], NULL, compile_object, cmd);
+                active_threads++;
+                idx++;
             }
 
-            char* object_file = source_to_object_name(arena, build_target -> sources[k]);
-
-            size += strlen(build_target -> sources[k]) + 1;
-            size += strlen(path_prefix) + 1;
-            size += strlen(config -> build_dir) + 1;
-            size += strlen(object_file) + 1;
-            size += strlen(path_prefix) + 1;
-
-            size = align_size(size);
-            char cmd[size];
-
-            size_t offset = snprintf(cmd, size, "%s", config -> compiler);
-
-            for (uint8_t i = 0; i < flag_count; i++) {
-                offset += snprintf(cmd + offset, size - offset, " %s", all_flags[i]); 
-            }
-
-            offset += snprintf(cmd + offset, size - offset, " -c");
-            offset += snprintf(cmd + offset, size - offset, " %s%s", path_prefix, build_target -> sources[k]);
-
-            offset += snprintf(cmd + offset, size - offset, " -o");
-            offset += snprintf(cmd + offset, size - offset, " %s%s%s", path_prefix, config -> build_dir, object_file);
-
-            all_object_files[k] = arena_strdup(arena, object_file);
-
-            if (system(cmd) != 0) {
-                return err("Failed to compile");
+            for (int i = 0; i < active_threads; i++) {
+                pthread_join(threads[i], NULL);
             }
         }
 
