@@ -204,13 +204,7 @@ Result build_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const
 
     switch (build_target -> type) {
         case Executable:
-            result = link_executable(config, path_prefix, build_target, all_flags, flag_count, all_object_files);
-            break;
-
         case Debug:
-            result = link_executable(config, path_prefix, build_target, all_flags, flag_count, all_object_files);
-            break;
-
         case Test:
             result = link_executable(config, path_prefix, build_target, all_flags, flag_count, all_object_files);
             break;
@@ -299,13 +293,7 @@ Result build_project_all(ArenaAllocator* arena, CatalyzeConfig* config) {
 
         switch (build_target -> type) {
             case Executable:
-                result = link_executable(config, path_prefix, build_target, all_flags, flag_count, all_object_files);
-                break;
-
             case Debug:
-                result = link_executable(config, path_prefix, build_target, all_flags, flag_count, all_object_files);
-                break;
-
             case Test:
                 result = link_executable(config, path_prefix, build_target, all_flags, flag_count, all_object_files);
                 break;

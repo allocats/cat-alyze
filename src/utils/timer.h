@@ -8,22 +8,21 @@ typedef struct {
     struct timespec end;
 } Timer;
 
-static void timer_start(Timer* timer) {
+static inline void timer_start(Timer* timer) {
     clock_gettime(CLOCK_MONOTONIC, &timer -> start);
 }
 
-static void timer_end(Timer* timer) {
+static inline void timer_end(Timer* timer) {
     clock_gettime(CLOCK_MONOTONIC, &timer -> end);
 }
 
-static double timer_elapsed_ms(Timer* timer) {
+static inline double timer_elapsed_ms(Timer* timer) {
     double start = timer -> start.tv_sec * 1000.0 + timer -> start.tv_nsec / 1000000.0;
     double end = timer -> end.tv_sec * 1000.0 + timer -> end.tv_nsec / 1000000.0;
-
     return end - start;
 }
 
-static double timer_elapsed_seconds(Timer* timer) {
+static inline double timer_elapsed_seconds(Timer* timer) {
     return timer_elapsed_ms(timer) / 1000.0;
 }
 

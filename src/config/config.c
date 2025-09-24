@@ -299,11 +299,13 @@ Result parse_config(ArenaAllocator* arena) {
 
     struct stat st;
     if (fstat(fd, &st) == -1) {
+        close(fd);
         return err("Failed to get stats about config.cat");
     }
 
     char* data = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (data == MAP_FAILED) {
+        close(fd);
         return err("Failed to allocate buffer for config.cat");
     }
 

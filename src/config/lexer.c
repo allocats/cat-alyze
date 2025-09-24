@@ -37,7 +37,7 @@ static const uint8_t char_map[256] = {
     ['}'] = 8,
 };
 
-static void lexer_err(Lexer* lexer, const char* msg) {
+static inline void lexer_err(Lexer* lexer, const char* msg) {
     int32_t line = 1;
     int32_t col = 1;
 
@@ -279,7 +279,7 @@ static Result expect_keyword(Lexer* lexer, const char* keyword) {
 
 static Result expect_char(Lexer* lexer, const char expected) {
     if (lexer -> c != expected) {
-        char msg[64];
+        char msg[16];
         snprintf(msg, sizeof(msg), "Expected: %c", expected);
         lexer_err(lexer, msg);
         return err("Parsing failed");

@@ -3,13 +3,14 @@
 #include "core.h"
 
 #include "../config/config.h"
+#include "../utils/macros.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-static Result create_dir() {
+static inline Result create_dir() {
     size_t size = 32;
     char cmd[size];
     snprintf(cmd, size, "mkdir -p src");
@@ -21,9 +22,9 @@ static Result create_dir() {
     return ok(NULL);
 }
 
-static Result create_config(const char* name) {
+static inline Result create_config(const char* name) {
     FILE* fptr = fopen("config.cat", "w");
-    if (fptr == NULL) {
+    if (UNLIKELY(fptr == NULL)) {
         fclose(fptr);
         return err("Failed to write to config.cat");
     }
@@ -34,7 +35,7 @@ static Result create_config(const char* name) {
     return ok(NULL);
 }
 
-static Result create_main() {
+static inline Result create_main() {
     FILE* fptr = fopen("src/main.c", "w");
     if (fptr == NULL) {
         fclose(fptr);
@@ -55,17 +56,17 @@ Result init_project() {
     name = name ? name + 1 : cwd;
 
     Result result = create_dir();
-    if (IS_ERR(result)) {
+    if (UNLIKELY(IS_ERR(result))) {
         return err(ERR_MSG(result));
     }
 
     result = create_config(name);
-    if (IS_ERR(result)) {
+    if (UNLIKELY(IS_ERR(result))) {
         return err(ERR_MSG(result));
     }
 
     result = create_main();
-    if (IS_ERR(result)) {
+    if (UNLIKELY(IS_ERR(result))) {
         return err(ERR_MSG(result));
     }
 

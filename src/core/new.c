@@ -3,13 +3,14 @@
 #include "core.h"
 
 #include "../config/config.h"
+#include "../utils/macros.h"
 
 #include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
-static Result create_dir(const char* name) {
+static inline Result create_dir(const char* name) {
     size_t size = 32 + MAX_NAME_LEN;
     char cmd[size];
     size_t offset = snprintf(cmd, size, "mkdir -p ");
@@ -22,21 +23,13 @@ static Result create_dir(const char* name) {
     return ok(NULL);
 }
 
-static Result create_config(const char* name) {
+static inline Result create_config(const char* name) {
     size_t size = 32 + MAX_NAME_LEN;
-    char cmd[size];
-    size_t offset = snprintf(cmd, size, "touch ");
-    offset += snprintf(cmd + offset, size - offset, "%s/config.cat", name);
-
-    if (system(cmd) != 0) {
-        return err("Touch failed");
-    }
-
     char path[size];
     snprintf(path, size, "%s/config.cat", name);
 
     FILE* fptr = fopen(path, "w");
-    if (fptr == NULL) {
+    if (UNLIKELY(fptr == NULL)) {
         fclose(fptr);
         return err("Failed to write to config.cat");
     }
@@ -47,21 +40,13 @@ static Result create_config(const char* name) {
     return ok(NULL);
 }
 
-static Result create_main(const char* name) {
+static inline Result create_main(const char* name) {
     size_t size = 32 + MAX_NAME_LEN;
-    char cmd[size];
-    size_t offset = snprintf(cmd, size, "touch ");
-    offset += snprintf(cmd + offset, size - offset, "%s/src/main.c", name);
-
-    if (system(cmd) != 0) {
-        return err("Touch failed");
-    }
-
     char path[size];
     snprintf(path, size, "%s/src/main.c", name);
 
     FILE* fptr = fopen(path, "w");
-    if (fptr == NULL) {
+    if (UNLIKELY(fptr == NULL)) {
         fclose(fptr);
         return err("Failed to write to main.c");
     }
@@ -78,17 +63,17 @@ Result new_project(const char* name) {
     }
 
     Result result = create_dir(name);
-    if (IS_ERR(result)) {
+    if (UNLIKELY(IS_ERR(result))) {
         return err(ERR_MSG(result));
     }
 
     result = create_config(name);
-    if (IS_ERR(result)) {
+    if (UNLIKELY(IS_ERR(result))) {
         return err(ERR_MSG(result));
     }
 
     result = create_main(name);
-    if (IS_ERR(result)) {
+    if (UNLIKELY(IS_ERR(result))) {
         return err(ERR_MSG(result));
     }
 
