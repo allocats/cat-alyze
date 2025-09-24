@@ -24,9 +24,10 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    size_t padded_len = ((st.st_size + 63) / 64) * 64;
+    size_t padded_len = ((st.st_size + 63) / 64) * 64 + 64;
 
-    char* buffer = aligned_alloc(64, padded_len + 1); 
+    // Freed inside of destroy_lexer()
+    char* buffer = aligned_alloc(64, padded_len); 
     if (UNLIKELY(!buffer)) {
         close(fd);
         fprintf(stderr, "Allocation failed!\n");
@@ -43,13 +44,9 @@ int main(int argc, char* argv[]) {
 
     close(fd);
     memset(buffer + st.st_size, ' ', padded_len - st.st_size);
-    buffer[padded_len] = 0;
+    buffer[padded_len - 1] = 0;
 
-    Lexer* lexer = create_lexer(buffer, padded_len + 1);
+    Lexer* lexer = create_lexer(buffer, padded_len);
     lex(lexer);
     destroy_lexer(lexer);
-
-    if (UNLIKELY(!buffer)) {
-        free(buffer);
-    }
 }
