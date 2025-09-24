@@ -1,6 +1,6 @@
 # cat-alayze
 
-My personal build system for C projects. Why? You might ask, well I got tired of writing makefiles over and over again, and CMake was not very appealing to me. I love working in Rust, so I thought why not build a Cargo like system for C! It is multithreaded, allowing for parallel compilation, it makes use of AVX2 SIMD as well as my own AVX2 powered arena allocator. I will add SSE and manual vectorisation as fallbacks for SIMD operations, I want to finish rewriting the lexer into a SIMD powered lexer first, and improve the overall performance. General improvements to compatability and fallbacks will come in the future as well.
+My personal build system for C projects. Why? You might ask, well I got tired of writing makefiles over and over again, and CMake was not very appealing to me. I love working in Rust, so I thought why not build a Cargo like system for C! It is multithreaded, allowing for parallel compilation, it makes use of an AVX2 SIMD powered arena allocator. I will add SSE and manual vectorisation as fallbacks for SIMD operations, and improve the overall performance. General improvements to compatability and fallbacks will come in the future as well.
 
 ## Quick Start
 
