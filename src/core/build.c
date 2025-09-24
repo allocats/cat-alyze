@@ -8,7 +8,7 @@
 
 #define MAX_THREADS sysconf(_SC_NPROCESSORS_ONLN)
 
-Result make_build_dir(const char* dir) {
+inline Result make_build_dir(const char* dir) {
     size_t mkdir_size = 32 + MAX_BUILD_DIR_LEN;
     char mkdir_cmd[mkdir_size];
 
@@ -22,7 +22,7 @@ Result make_build_dir(const char* dir) {
     return ok(NULL);
 }
 
-Result make_output_dir(const char* dir) {
+inline Result make_output_dir(const char* dir) {
     size_t mkdir_size = 32 + MAX_BUILD_DIR_LEN;
     char mkdir_cmd[mkdir_size];
 
@@ -36,7 +36,7 @@ Result make_output_dir(const char* dir) {
     return ok(NULL);
 }
 
-char* source_to_object_name(ArenaAllocator* arena, const char* source_path) {
+inline char* source_to_object_name(ArenaAllocator* arena, const char* source_path) {
     const char* name = strrchr(source_path, '/');
     name = name ? name + 1 : source_path;
 
@@ -160,26 +160,25 @@ Result build_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const
     }
 
     char** all_flags = arena_array(arena, char*, (config -> default_flag_count + build_target -> flag_count));
-    uint8_t flag_count = 0;
+    uint8_t flag_count = config -> default_flag_count + build_target -> flag_count;
 
-    for (uint8_t i = 0; i < config -> default_flag_count; i++) {
-        all_flags[flag_count++] = config -> default_flags[i];
+    if (config -> default_flag_count > 0) {
+        arena_memcpy(all_flags, config -> default_flags, config -> default_flag_count * sizeof(char*));
     }
 
-    for (uint8_t i = 0; i < build_target -> flag_count; i++) {
-        all_flags[flag_count++] = build_target -> flags[i];
+    if (build_target -> flag_count > 0) {
+        arena_memcpy(all_flags + config -> default_flag_count, build_target -> flags, build_target-> flag_count * sizeof(char*));
     }
 
     char** all_object_files = arena_array(arena, char*, build_target -> source_count);
 
     int idx = 0;
-    int active_threads = 0;
     pthread_t threads[MAX_THREADS];
 
     while (idx < build_target -> source_count) {
-        active_threads = 0;
+        int batch_size = (build_target->source_count - idx > MAX_THREADS) ? MAX_THREADS : (build_target->source_count - idx);
 
-        for (int i = 0; i < MAX_THREADS && idx < build_target -> source_count; i++) {
+        for (int i = 0; i < batch_size; i++) {
             Cmd* cmd = arena_alloc(arena, sizeof(*cmd));
 
             cmd -> all_object_files = &all_object_files;
@@ -193,11 +192,10 @@ Result build_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const
             cmd -> idx = idx;
 
             pthread_create(&threads[i], NULL, compile_object, cmd);
-            active_threads++;
             idx++;
         }
 
-        for (int i = 0; i < active_threads; i++) {
+        for (int i = 0; i < batch_size; i++) {
             pthread_join(threads[i], NULL);
         }
     }
@@ -234,7 +232,7 @@ Result build_project_all(ArenaAllocator* arena, CatalyzeConfig* config) {
             return err("Target not found");
         }
 
-        if (build_target -> type == Debug || build_target -> type == Test) continue;
+        if (build_target -> type != Executable) continue;
 
         result = make_output_dir(build_target -> output_dir);
         if (IS_ERR(result)) {
@@ -249,26 +247,25 @@ Result build_project_all(ArenaAllocator* arena, CatalyzeConfig* config) {
         }
 
         char** all_flags = arena_array(arena, char*, (config -> default_flag_count + build_target -> flag_count));
-        uint8_t flag_count = 0;
+        uint8_t flag_count = config -> default_flag_count + build_target -> flag_count;
 
-        for (uint8_t i = 0; i < config -> default_flag_count; i++) {
-            all_flags[flag_count++] = config -> default_flags[i];
+        if (config -> default_flag_count > 0) {
+            arena_memcpy(all_flags, config -> default_flags, config -> default_flag_count * sizeof(char*));
         }
 
-        for (uint8_t i = 0; i < build_target -> flag_count; i++) {
-            all_flags[flag_count++] = build_target -> flags[i];
+        if (build_target -> flag_count > 0) {
+            arena_memcpy(all_flags + config -> default_flag_count, build_target -> flags, build_target-> flag_count * sizeof(char*));
         }
 
         char** all_object_files = arena_array(arena, char*, build_target -> source_count);
 
         int idx = 0;
-        int active_threads = 0;
         pthread_t threads[MAX_THREADS];
 
         while (idx < build_target -> source_count) {
-            active_threads = 0;
+            int batch_size = (build_target->source_count - idx > MAX_THREADS) ? MAX_THREADS : (build_target->source_count - idx);
 
-            for (int i = 0; i < MAX_THREADS && idx < build_target -> source_count; i++) {
+            for (int i = 0; i < batch_size; i++) {
                 Cmd* cmd = arena_alloc(arena, sizeof(*cmd));
 
                 cmd -> all_object_files = &all_object_files;
@@ -282,11 +279,10 @@ Result build_project_all(ArenaAllocator* arena, CatalyzeConfig* config) {
                 cmd -> idx = idx;
 
                 pthread_create(&threads[i], NULL, compile_object, cmd);
-                active_threads++;
                 idx++;
             }
 
-            for (int i = 0; i < active_threads; i++) {
+            for (int i = 0; i < batch_size; i++) {
                 pthread_join(threads[i], NULL);
             }
         }

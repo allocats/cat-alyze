@@ -29,7 +29,7 @@ Result push_default_flag(ArenaAllocator* arena, CatalyzeConfig* config, const ch
     }
 
     config -> default_flags[config -> default_flag_count] = arena_alloc(arena, *len + 1);
-    memcpy(config -> default_flags[config -> default_flag_count], start, *len);
+    arena_memcpy(config -> default_flags[config -> default_flag_count], start, *len);
     config -> default_flags[config -> default_flag_count][*len] = '\0';
     config -> default_flag_count++;
 
@@ -65,7 +65,7 @@ Result push_flag(ArenaAllocator* arena, CatalyzeConfig* config, const char* star
     }
 
     target -> flags[target -> flag_count] = arena_alloc(arena, *len + 1);
-    memcpy(target -> flags[target -> flag_count], start, *len);
+    arena_memcpy(target -> flags[target -> flag_count], start, *len);
     target -> flags[target -> flag_count][*len] = '\0';
     target -> flag_count++;
 
@@ -100,7 +100,7 @@ Result push_source(ArenaAllocator* arena, CatalyzeConfig* config, const char* st
     }
 
     target -> sources[target -> source_count] = arena_alloc(arena, *len + 1);
-    memcpy(target -> sources[target -> source_count], start, *len);
+    arena_memcpy(target -> sources[target -> source_count], start, *len);
     target -> sources[target -> source_count][*len] = '\0';
     target -> source_count++;
 
@@ -117,7 +117,7 @@ Result set_single(ArenaAllocator* arena, char** dest, const char* start, size_t 
         arena_memset((void*) *dest, 0, len + 1);
     }
 
-    memcpy((void*) *dest, start, len);
+    arena_memcpy((void*) *dest, start, len);
     (*dest)[len] = '\0';
     return ok(NULL);
 }
@@ -136,7 +136,7 @@ Result set_compiler(ArenaAllocator* arena, CatalyzeConfig* config, const char* s
         arena_memset(config -> default_flags, 0, *len);
     }
 
-    memcpy(config -> compiler, start, *len);
+    arena_memcpy(config -> compiler, start, *len);
     config -> compiler[*len] = '\0';
 
     return ok(NULL);
@@ -156,7 +156,7 @@ Result set_build_dir(ArenaAllocator* arena, CatalyzeConfig* config, const char* 
         arena_memset(config -> default_flags, 0, *len);
     }
 
-    memcpy(config -> build_dir, start, *len);
+    arena_memcpy(config -> build_dir, start, *len);
     config -> build_dir[*len] = '\0';
 
     return ok(NULL);
@@ -181,7 +181,7 @@ Result set_name(ArenaAllocator* arena, CatalyzeConfig* config, const char* start
         arena_memset(target -> name, 0, *len);
     }
 
-    memcpy(target -> name, start, *len);
+    arena_memcpy(target -> name, start, *len);
     target -> name[*len] = '\0';
 
     return ok(NULL);
@@ -225,7 +225,7 @@ Result set_output_dir(ArenaAllocator* arena, CatalyzeConfig* config, const char*
         arena_memset(target -> output_dir, 0, *len);
     }
 
-    memcpy(target -> output_dir, start, *len);
+    arena_memcpy(target -> output_dir, start, *len);
     target -> output_dir[*len] = '\0';
 
 
@@ -248,7 +248,7 @@ Result set_output_name(ArenaAllocator* arena, CatalyzeConfig* config, const char
         arena_memset(target -> output_name, 0, *len);
     }
 
-    memcpy(target -> output_name, start, *len);
+    arena_memcpy(target -> output_name, start, *len);
     target -> output_name[*len] = '\0';
 
     return ok(NULL);
@@ -303,17 +303,14 @@ Result parse_config(ArenaAllocator* arena) {
         return err("Failed to get stats about config.cat");
     }
 
-    char* data = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    if (data == MAP_FAILED) {
+    char* buffer = arena_alloc(arena, st.st_size + 1);
+    ssize_t bytes_read = read(fd, buffer, st.st_size);
+    if (bytes_read != st.st_size) {
         close(fd);
-        return err("Failed to allocate buffer for config.cat");
+        return err("Failed to read config.cat");
     }
 
-    char* buffer = arena_alloc(arena, st.st_size + 1);
-    arena_memcpy(buffer, data, st.st_size);
-    munmap(data, st.st_size);
     close(fd);
-
     buffer[st.st_size] = '\0';
 
     return lexer_parse(arena, buffer, nest_count);

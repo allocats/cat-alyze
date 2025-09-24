@@ -29,14 +29,14 @@ static Result build_debug_target(ArenaAllocator* arena, CatalyzeConfig* config, 
     }
 
     char** all_flags = arena_array(arena, char*, (config -> default_flag_count + target -> flag_count));
-    uint8_t flag_count = 0;
+    uint8_t flag_count = config -> default_flag_count + target -> flag_count;
 
-    for (uint8_t i = 0; i < config -> default_flag_count; i++) {
-        all_flags[flag_count++] = config -> default_flags[i];
+    if (config -> default_flag_count > 0) {
+        arena_memcpy(all_flags, config -> default_flags, config -> default_flag_count * sizeof(char*));
     }
 
-    for (uint8_t i = 0; i < target -> flag_count; i++) {
-        all_flags[flag_count++] = target -> flags[i];
+    if (target -> flag_count > 0) {
+        arena_memcpy(all_flags + config -> default_flag_count, target -> flags, target-> flag_count * sizeof(char*));
     }
 
     char** all_object_files = arena_array(arena, char*, target -> source_count);

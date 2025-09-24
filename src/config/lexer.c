@@ -317,7 +317,7 @@ static Result parse_identifier_into_buffer(Lexer* lexer, char* buffer, size_t bu
         return err("Parsing failed");
     }
 
-    memcpy(buffer, start, len);
+    arena_memcpy(buffer, start, len);
     buffer[len] = '\0';
     return ok(NULL);
 }

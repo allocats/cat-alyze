@@ -13,7 +13,8 @@
 #define AVX2_CHUNK(p, n) (p + (32 * n))
 
 inline size_t align_size(size_t size) {
-    return (size + sizeof(void*) - 1) & ~(sizeof(void*) - 1);
+    // return (size + sizeof(void*) - 1) & ~(sizeof(void*) - 1);
+    return (size + 31) & ~(31);
 }
 
 inline void init_arena(ArenaAllocator* arena, size_t default_capacity) {
@@ -32,7 +33,8 @@ static __attribute__((noinline)) ArenaBlock* new_block(size_t default_capacity, 
 
     size_t bytes = capacity * sizeof(uintptr_t);
     size_t total_size = sizeof(ArenaBlock) + bytes;
-    ArenaBlock* block = (ArenaBlock*) aligned_alloc(32, total_size);
+    size_t aligned_size = align_size(total_size);
+    ArenaBlock* block = (ArenaBlock*) aligned_alloc(32, aligned_size);
     assert(block);
 
     block -> next = NULL;
@@ -47,14 +49,14 @@ static inline void free_block(ArenaBlock* block) {
 }
 
 inline void* arena_alloc(ArenaAllocator* arena, size_t size) {
-    size = align_size(size);
+    ArenaBlock* current = arena -> end;
 
-    if (UNLIKELY(arena -> end == NULL && arena -> start == NULL)) {
-        arena -> end = new_block(arena -> default_capacity, size);
-        arena -> start = arena -> end;
+    if (UNLIKELY(!current)) {
+        current = new_block(arena -> default_capacity, size);
+        arena -> start = arena -> end = current;
 
-        void* result = (char*) arena -> end -> data + arena -> end -> usage;
-        arena -> end -> usage += size;
+        void* result = (char*) current -> data + current -> usage;
+        current -> usage += size;
         return result;
     }
 
@@ -73,7 +75,7 @@ inline void* arena_alloc(ArenaAllocator* arena, size_t size) {
     return result;
 }
 
-void* arena_realloc(ArenaAllocator* arena, void* ptr, size_t old_size, size_t new_size) {
+inline void* arena_realloc(ArenaAllocator* arena, void* ptr, size_t old_size, size_t new_size) {
     if (UNLIKELY(new_size <= old_size)) {
         return ptr;
     }
@@ -290,7 +292,7 @@ inline void arena_reset(ArenaAllocator* arena) {
     arena -> end = arena -> start;
 }
 
-void arena_free(ArenaAllocator* arena) {
+inline void arena_free(ArenaAllocator* arena) {
     ArenaBlock* block = arena -> start;
 
     while (block != NULL) {
