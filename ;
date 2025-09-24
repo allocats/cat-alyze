@@ -218,7 +218,7 @@ int main(int argc, char* argv[]) {
         cleanup_and_exit(1);
     }
 
-    init_arena(&arena, 8192 / sizeof(uintptr_t));
+    init_arena(&arena, 8192/sizeof(uintptr_t));
 
     int result = cmd -> handler(argc, argv);
     cleanup_and_exit(0);

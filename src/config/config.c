@@ -254,33 +254,43 @@ Result set_output_name(ArenaAllocator* arena, CatalyzeConfig* config, const char
     return ok(NULL);
 }
 
-
 Result find_config_file(ArenaAllocator* arena, uint8_t* nest_count) {
-    char* curr_path = arena_alloc(arena, MAX_PATH);
-    getcwd(curr_path, MAX_PATH);
-
-    for (int i = 0; i < MAX_PATH >> 2; i++) {
-        DIR* dir = opendir(curr_path);
-        if (!dir) {
-            return err("Failed to open directory\n");
-        };
-
-        struct dirent* entry;
-        while ((entry = readdir(dir)) != NULL) {
-            if (entry -> d_type == DT_REG && strcmp("config.cat", entry -> d_name) == 0) {
-                char* result_path = arena_alloc(arena, MAX_PATH);
-                snprintf(result_path, MAX_PATH, "%s/config.cat", curr_path);
-                closedir(dir);
-
-                return ok(result_path);
+    static const char* path_templates[] = {
+        "./config.cat",
+        "../config.cat", 
+        "../../config.cat",
+        "../../../config.cat",
+        "../../../../config.cat",
+        "../../../../../config.cat",
+        "../../../../../../config.cat",
+        "../../../../../../../config.cat",
+        "../../../../../../../../config.cat",
+        "../../../../../../../../../config.cat",
+        "../../../../../../../../../../config.cat",
+        "../../../../../../../../../../../config.cat",
+        "../../../../../../../../../../../../config.cat",
+        "../../../../../../../../../../../../../config.cat",
+        "../../../../../../../../../../../../../../config.cat",
+        NULL
+    };
+    
+    for (int i = 0; path_templates[i]; i++) {
+        FILE* fptr = fopen(path_templates[i], "r");
+        if (fptr) {
+            fclose(fptr);
+            *nest_count = i;
+            
+            size_t path_len = strlen(path_templates[i]);
+            char* result_path = arena_alloc(arena, path_len + 1);
+            if (!result_path) {
+                return err("Arena allocation failed");
             }
+
+            strcpy(result_path, path_templates[i]);
+            return ok(result_path);
         }
-        closedir(dir);
-        strcat(curr_path, "/..");
-
-        *nest_count = i + 1;
     }
-
+    
     return err("config.cat not found");
 }
 

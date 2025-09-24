@@ -13,7 +13,6 @@
 #define AVX2_CHUNK(p, n) (p + (32 * n))
 
 inline size_t align_size(size_t size) {
-    // return (size + sizeof(void*) - 1) & ~(sizeof(void*) - 1);
     return (size + 31) & ~(31);
 }
 
