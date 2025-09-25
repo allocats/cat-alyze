@@ -1,8 +1,9 @@
 #include "debug.h"
 
-#include "../utils/arena.h"
-#include "../config/config.h"
 #include "build.h"
+#include "../config/config.h"
+#include "../utils/arena.h"
+#include "../utils/macros.h"
 
 #include <stdint.h>
 #include <string.h>
@@ -14,8 +15,8 @@ static inline void debug_err(const char* msg) {
 }
 
 static void build_debug_target(ArenaAllocator* arena, CatalyzeConfig* config, Target* target) {
-    make_build_dir(config -> build_dir);
-    make_output_dir(target -> output_dir);
+    make_dir(config -> build_dir);
+    make_dir(target -> output_dir);
 
     char* path_prefix = arena_alloc(arena, (config -> nest_count * 3) + 1);
     path_prefix[0] = '\0';
@@ -68,7 +69,7 @@ static void build_debug_target(ArenaAllocator* arena, CatalyzeConfig* config, Ta
 
         all_object_files[i] = arena_strdup(arena, object_file);
 
-        if (system(cmd) != 0) {
+        if (UNLIKELY(system(cmd) != 0)) {
             debug_err("Failed to compile");
         }
     }
@@ -86,7 +87,7 @@ static void run_debug_target(ArenaAllocator* arena, CatalyzeConfig* config, cons
         }
     }
 
-    if (target == NULL) {
+    if (UNLIKELY(target == NULL)) {
         debug_err("Target not found");
     }
 
@@ -101,9 +102,9 @@ static void run_debug_target(ArenaAllocator* arena, CatalyzeConfig* config, cons
         strcat(path_prefix, "../");
     }
 
-    snprintf(cmd, size, "./%s%s%s", path_prefix, target -> output_dir, target -> output_name);
+    snprintf(cmd, size, "./%s%s/%s", path_prefix, target -> output_dir, target -> output_name);
 
-    if (system(cmd) != 0) {
+    if (UNLIKELY(system(cmd) != 0)) {
         debug_err("Run failed");
     }
 }
@@ -118,7 +119,7 @@ void debug_all(ArenaAllocator* arena, CatalyzeConfig* config) {
         }
     }
 
-    if (count == 0) {
+    if (UNLIKELY(count == 0)) {
         debug_err("No debug targets found");
     } 
 }

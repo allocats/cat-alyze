@@ -1,5 +1,7 @@
 #include "lexer.h" 
+
 #include "config.h"
+#include "../utils/macros.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -198,7 +200,7 @@ static void parse_target_output(Lexer* lexer) {
     char* end = *cursor;
     char* current = end;
 
-    if (current == start) {
+    if (UNLIKELY(current == start)) {
         lexer_err(lexer, "Invalid output");
     }
 
@@ -209,11 +211,16 @@ static void parse_target_output(Lexer* lexer) {
         current--;
     }
 
-    size_t len = end - current;
-    set_output_name(lexer -> arena, lexer -> config, current, &len);
+    *cursor = current;
+    (*cursor)--;
+    (**cursor) = 0;
 
-    len = current - start;
-    set_output_dir(lexer -> arena, lexer -> config, start, &len);
+    *cursor = end;
+    (**cursor) = 0;
+    (*cursor)++;
+
+    set_output_name(lexer -> arena, lexer -> config, current);
+    set_output_dir(lexer -> arena, lexer -> config, start);
 }
 
 static void match_options(Lexer* lexer, const char* start, size_t len) {
@@ -340,7 +347,7 @@ static void parse_identifier_into_buffer(Lexer* lexer, char* buffer, size_t buff
     (**cursor) = 0;
     (*cursor)++;
 
-    if (len >= buffer_size) {
+    if (UNLIKELY(len >= buffer_size)) {
         lexer_err(lexer, "Identifier too long");
     }
 
@@ -451,7 +458,7 @@ CatalyzeConfig* lexer_parse(ArenaAllocator* arena, char* buffer, uint8_t nest_co
         skip_whitespace(lexer);
     }
 
-    if (lexer -> config -> target_count == 0) {
+    if (UNLIKELY(lexer -> config -> target_count == 0)) {
         lexer_err(lexer, "At least one target is required");
     }
 

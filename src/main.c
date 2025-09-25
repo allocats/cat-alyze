@@ -112,7 +112,7 @@ static int handle_test(int argc, char* argv[]) {
     
     CatalyzeConfig* config = parse_config(&arena);
     printf("%p : %zu bytes\n", config, sizeof(*config));
-    print_config(config);
+    // print_config(config);
 
     // if (argc == 2) {
     //     run_project_all(&arena, config);

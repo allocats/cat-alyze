@@ -1,9 +1,14 @@
 #include "build.h"
 
+#include "../utils/macros.h"
+
+#include <errno.h>
+#include <limits.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #define MAX_THREADS sysconf(_SC_NPROCESSORS_ONLN)
@@ -13,27 +18,33 @@ static inline void build_err(const char* msg) {
     exit(1);
 }
 
-inline void make_build_dir(const char* dir) {
-    size_t mkdir_size = 32 + MAX_BUILD_DIR_LEN;
-    char mkdir_cmd[mkdir_size];
+inline void make_dir(const char* dir) {
+    char tmp[PATH_MAX];
+    char *p = NULL;
 
-    size_t mkdir_offset = snprintf(mkdir_cmd, mkdir_size, "%s", "mkdir -p ");
-    mkdir_offset += snprintf(mkdir_cmd + mkdir_offset, mkdir_size - mkdir_offset, "%s", dir);
+    snprintf(tmp, sizeof(tmp), "%s", dir);
+    size_t len = strlen(tmp);
 
-    if (system(mkdir_cmd) != 0) {
-        build_err("Mkdir failed");
+    if (tmp[len - 1] == '/') {
+        tmp[len - 1] = '\0';
     }
-}
 
-inline void make_output_dir(const char* dir) {
-    size_t mkdir_size = 32 + MAX_BUILD_DIR_LEN;
-    char mkdir_cmd[mkdir_size];
+    for (p = tmp + 1; *p; p++) {
+        if (*p == '/') {
+            *p = '\0';
+            if (mkdir(tmp, 0755) != 0) {
+                if (errno != EEXIST) {
+                    build_err("Mkdir failed!");
+                }
+            }
+            *p = '/';
+        }
+    }
 
-    size_t mkdir_offset = snprintf(mkdir_cmd, mkdir_size, "%s", "mkdir -p ");
-    mkdir_offset += snprintf(mkdir_cmd + mkdir_offset, mkdir_size - mkdir_offset, "%s", dir);
-
-    if (system(mkdir_cmd) != 0) {
-        build_err("Mkdir failed");
+    if (mkdir(tmp, 0755) != 0) { 
+        if (errno != EEXIST) {
+            build_err("Mkdir failed!");
+        }
     }
 }
 
@@ -80,7 +91,7 @@ void link_executable(CatalyzeConfig* config, const char* path_prefix, Target* bu
     }
 
     offset += snprintf(cmd + offset, size - offset, " -o");
-    offset += snprintf(cmd + offset, size - offset, " %s%s%s", path_prefix, build_target -> output_dir, build_target -> output_name);
+    offset += snprintf(cmd + offset, size - offset, " %s%s/%s", path_prefix, build_target -> output_dir, build_target -> output_name);
 
     if (system(cmd) != 0) {
         build_err("compiler failed");
@@ -120,7 +131,7 @@ static void* compile_object(void* arg) {
 
     (*cmd -> all_object_files)[cmd -> idx] = arena_strdup(cmd -> arena, object_file);
 
-    if (system(compile_command) != 0) {
+    if (UNLIKELY(system(compile_command) != 0)) {
         exit(1);
     }
 
@@ -128,7 +139,7 @@ static void* compile_object(void* arg) {
 }
 
 void build_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const char* target) {
-    make_build_dir(config -> build_dir);
+    make_dir(config -> build_dir);
 
     Target* build_target = NULL;
     for (uint8_t i = 0; i < config -> target_count; i++) {
@@ -138,11 +149,11 @@ void build_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const c
         }
     }
 
-    if (build_target == NULL) {
+    if (UNLIKELY(build_target == NULL)) {
         build_err("Target not found");
     }
 
-    make_output_dir(build_target -> output_dir);
+    make_dir(build_target -> output_dir);
 
     char* path_prefix = arena_alloc(arena, (config -> nest_count * 3) + 1);
     path_prefix[0] = '\0';
@@ -205,7 +216,7 @@ void build_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const c
 }
 
 void build_project_all(ArenaAllocator* arena, CatalyzeConfig* config) {
-    make_build_dir(config -> build_dir);
+    make_dir(config -> build_dir);
 
     for (uint8_t current_target = 0; current_target < config -> target_count; current_target++) {
         Target* build_target = config -> targets[current_target];
@@ -216,7 +227,7 @@ void build_project_all(ArenaAllocator* arena, CatalyzeConfig* config) {
 
         if (build_target -> type != Executable) continue;
 
-        make_output_dir(build_target -> output_dir);
+        make_dir(build_target -> output_dir);
 
         char* path_prefix = arena_alloc(arena, (config -> nest_count * 3) + 1);
         path_prefix[0] = '\0';

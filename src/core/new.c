@@ -1,6 +1,7 @@
 #include "new.h"
 
 #include "core.h"
+#include "build.h"
 
 #include "../config/config.h"
 #include "../utils/macros.h"
@@ -8,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 static inline void new_err(const char* msg) {
@@ -18,12 +20,9 @@ static inline void new_err(const char* msg) {
 static inline void create_dir(const char* name) {
     size_t size = 32 + MAX_NAME_LEN;
     char cmd[size];
-    size_t offset = snprintf(cmd, size, "mkdir -p ");
-    offset += snprintf(cmd + offset, size - offset, "%s/src", name);
+    size_t offset = snprintf(cmd, size, "%s/src", name);
 
-    if (system(cmd) != 0) {
-        new_err("Mkdir failed");
-    }
+    make_dir(cmd);
 }
 
 static inline void create_config(const char* name) {
@@ -57,7 +56,7 @@ static inline void create_main(const char* name) {
 } 
 
 void new_project(const char* name) {
-    if (strlen(name) > MAX_NAME_LEN) {
+    if (UNLIKELY(strlen(name) > MAX_NAME_LEN)) {
         new_err("Project name too long");
     }
 

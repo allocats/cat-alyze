@@ -1,5 +1,6 @@
 #include "init.h"
 
+#include "build.h"
 #include "core.h"
 
 #include "../config/config.h"
@@ -8,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 static inline void init_err(const char* msg) {
@@ -16,13 +18,7 @@ static inline void init_err(const char* msg) {
 }
 
 static inline void create_dir() {
-    size_t size = 32;
-    char cmd[size];
-    snprintf(cmd, size, "mkdir -p src");
-
-    if (system(cmd) != 0) {
-        init_err("Mkdir failed");
-    }
+    make_dir("src");
 }
 
 static inline void create_config(const char* name) {
@@ -38,7 +34,7 @@ static inline void create_config(const char* name) {
 
 static inline void create_main() {
     FILE* fptr = fopen("src/main.c", "w");
-    if (fptr == NULL) {
+    if (UNLIKELY(fptr == NULL)) {
         fclose(fptr);
         init_err("Failed to write to main.c");
     }

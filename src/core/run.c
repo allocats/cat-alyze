@@ -35,7 +35,7 @@ void run_project_all(ArenaAllocator* arena, CatalyzeConfig* config) {
             strcat(path_prefix, "../");
         }
 
-        snprintf(cmd, size, "./%s%s%s", path_prefix, target -> output_dir, target -> output_name);
+        snprintf(cmd, size, "./%s%s/%s", path_prefix, target -> output_dir, target -> output_name);
 
         if (system(cmd) != 0) {
             run_err("Run failed");
@@ -68,7 +68,7 @@ void run_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const cha
         strcat(path_prefix, "../");
     }
 
-    snprintf(cmd, size, "./%s%s%s", path_prefix, target -> output_dir, target -> output_name);
+    snprintf(cmd, size, "./%s%s/%s", path_prefix, target -> output_dir, target -> output_name);
 
     if (system(cmd) != 0) {
         run_err("Run failed");

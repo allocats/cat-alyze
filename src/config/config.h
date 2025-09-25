@@ -61,10 +61,10 @@ void set_single(ArenaAllocator* arena, char** dest, char* start);
 
 void set_name(ArenaAllocator* arena, CatalyzeConfig* config, char* start);
 void set_type(ArenaAllocator* arena, CatalyzeConfig* config, TargetType type);
-void set_output_dir(ArenaAllocator* arena, CatalyzeConfig* config, char* start, size_t* len);
-void set_output_name(ArenaAllocator* arena, CatalyzeConfig* config, char* start, size_t* len);
+void set_output_dir(ArenaAllocator* arena, CatalyzeConfig* config, char* start);
+void set_output_name(ArenaAllocator* arena, CatalyzeConfig* config, char* start);
 
 CatalyzeConfig* parse_config(ArenaAllocator* arena);
-void print_config(const CatalyzeConfig* config);
+// void print_config(const CatalyzeConfig* config);
 
 #endif // !CONFIG_H

@@ -23,8 +23,9 @@ void build_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const c
 void build_project_all(ArenaAllocator* arena, CatalyzeConfig* config);
 
 void link_executable(CatalyzeConfig* config, const char* path_prefix, Target* build_target, char** all_flags, uint8_t flag_count, char** all_object_files); 
-void make_build_dir(const char* dir); 
-void make_output_dir(const char* dir); 
+// void make_build_dir(const char* dir); 
+// void make_build_dir(const char* dir); 
+void make_dir(const char* dir); 
 char* source_to_object_name(ArenaAllocator* arena, const char* source_path);
 
 #endif // !BUILD_H
