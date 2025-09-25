@@ -9,18 +9,19 @@
 #include <stdlib.h>
 #include <string.h>
 
-Result run_project_all(ArenaAllocator* arena, CatalyzeConfig* config) {
-    Result result = build_project_all(arena, config);
+static inline void run_err(const char* msg) {
+    printf("\e[1mError:\e[0m %s\n", msg);
+    exit(1);
+}
 
-    if (IS_ERR(result)) {
-        return err(ERR_MSG(result));
-    }
+void run_project_all(ArenaAllocator* arena, CatalyzeConfig* config) {
+    build_project_all(arena, config);
 
     for (uint8_t i = 0; i < config -> target_count; i++) {
         Target* target = config -> targets[i];
 
         if (target == NULL) {
-            return err("Invalid target found");
+            run_err("Invalid target found");
         }
 
         if (target -> type != Executable) continue;
@@ -37,14 +38,12 @@ Result run_project_all(ArenaAllocator* arena, CatalyzeConfig* config) {
         snprintf(cmd, size, "./%s%s%s", path_prefix, target -> output_dir, target -> output_name);
 
         if (system(cmd) != 0) {
-            return err("Run failed");
+            run_err("Run failed");
         }
     }
-
-    return ok(NULL);
 }
 
-Result run_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const char* target_name) {
+void run_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const char* target_name) {
     Target* target = NULL;
 
     for (uint8_t i = 0; i < config -> target_count; i++) {
@@ -55,14 +54,10 @@ Result run_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const c
     }
 
     if (target == NULL) {
-        return err("Target not found");
+        run_err("Target not found");
     }
 
-    Result result = build_project_target(arena, config, target_name);
-    
-    if (IS_ERR(result)) {
-        return err(ERR_MSG(result));
-    }
+    build_project_target(arena, config, target_name);
 
     size_t size = 32 + strlen(target -> output_dir) + strlen(target -> output_name) + (3 * config -> nest_count);
     char cmd[size];
@@ -76,8 +71,6 @@ Result run_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const c
     snprintf(cmd, size, "./%s%s%s", path_prefix, target -> output_dir, target -> output_name);
 
     if (system(cmd) != 0) {
-        return err("Run failed");
+        run_err("Run failed");
     }
-
-    return ok(NULL);
 }

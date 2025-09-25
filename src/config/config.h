@@ -2,7 +2,6 @@
 #define CONFIG_H
 
 #include "../utils/arena.h"
-#include "../utils/result.h"
 
 #include <stdint.h>
 
@@ -51,22 +50,21 @@ typedef struct {
     char* build_dir;
 } __attribute__((aligned(8))) CatalyzeConfig;
 
-Result push_default_flag(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len);
-Result push_flag(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len);
-Result push_source(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len);
+void push_default_flag(ArenaAllocator* arena, CatalyzeConfig* config, char* start);
+void push_flag(ArenaAllocator* arena, CatalyzeConfig* config, char* start);
+void push_source(ArenaAllocator* arena, CatalyzeConfig* config, char* start);
 
-Result set_compiler(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len);
-Result set_build_dir(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len);
+void set_compiler(ArenaAllocator* arena, CatalyzeConfig* config, char* start);
+void set_build_dir(ArenaAllocator* arena, CatalyzeConfig* config, char* start);
 
-Result set_single(ArenaAllocator* arena, char** dest, const char* start, size_t len);
+void set_single(ArenaAllocator* arena, char** dest, char* start);
 
-Result set_name(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len);
-Result set_type(ArenaAllocator* arena, CatalyzeConfig* config, TargetType type);
-Result set_output_dir(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len);
-Result set_output_name(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len);
+void set_name(ArenaAllocator* arena, CatalyzeConfig* config, char* start);
+void set_type(ArenaAllocator* arena, CatalyzeConfig* config, TargetType type);
+void set_output_dir(ArenaAllocator* arena, CatalyzeConfig* config, char* start, size_t* len);
+void set_output_name(ArenaAllocator* arena, CatalyzeConfig* config, char* start, size_t* len);
 
-Result find_config_file(ArenaAllocator* arena, uint8_t* nest_count);
-Result parse_config(ArenaAllocator* arena);
+CatalyzeConfig* parse_config(ArenaAllocator* arena);
 void print_config(const CatalyzeConfig* config);
 
 #endif // !CONFIG_H

@@ -1,14 +1,11 @@
 #include "lexer.h" 
 #include "config.h"
 
-#include <dirent.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/types.h>
-#include <time.h>
 
 #define IS_ALPHA(c) (char_map[(char)(c)] & 1)
 #define IS_WHITESPACE(c) (char_map[(char)(c)] & 2)
@@ -41,8 +38,13 @@ static inline void lexer_err(Lexer* lexer, const char* msg) {
     int32_t line = 1;
     int32_t col = 1;
 
-    for (int32_t i = 0; i < lexer -> current; i++) {
-        if (lexer -> buffer[i] == '\n') {
+    const char* cursor = lexer -> cursor;
+    const char* buffer = lexer -> buffer;
+
+    size_t len = cursor - buffer;
+
+    for (int32_t i = 0; i < len; i++) {
+        if (buffer[i] == '\n') {
             col = 1;
             line++;
         } else {
@@ -51,152 +53,158 @@ static inline void lexer_err(Lexer* lexer, const char* msg) {
     }
 
     printf("\e[1mError in config.cat at line %d, column %d:\e[0m %s\n", line, col, msg);
+    exit(1);
 }
 
-static Lexer* create_lexer(ArenaAllocator* arena, CatalyzeConfig* config, const char* buffer) {
+static Lexer* create_lexer(ArenaAllocator* arena, CatalyzeConfig* config, char* buffer) {
     Lexer* lexer = arena_alloc(arena, sizeof(*lexer));
 
     lexer -> arena = arena;
     lexer -> config = config;
+    lexer -> len = strlen(buffer);
     lexer -> buffer = buffer;
-    lexer -> len = strlen(lexer -> buffer);
-    lexer -> current = 0;
-    lexer -> c = lexer -> buffer[0];
+    lexer -> cursor = lexer -> buffer;
+    lexer -> end = lexer -> buffer + lexer -> len;
 
     return lexer;
 }
 
 static inline void advance(Lexer* lexer) {
-    lexer -> c = (++lexer -> current < lexer -> len) ? lexer -> buffer[lexer -> current] : '\0';
+    lexer -> cursor = ++lexer -> cursor >= lexer -> end ? lexer -> end : lexer -> cursor;
 }
 
 static inline void skip_whitespace(Lexer* lexer) {
-    while (IS_WHITESPACE(lexer -> c)) {
+    char** cursor = &lexer -> cursor;
+    while (IS_WHITESPACE(**cursor)) {
         advance(lexer);
     } 
 }
 
 static inline void skip_spaces(Lexer* lexer) {
-    while (IS_WHITESPACE(lexer -> c) && lexer -> c != '\n') {
+    char** cursor = &lexer -> cursor;
+    while (IS_WHITESPACE(**cursor) && **cursor != '\n') {
         advance(lexer);
     } 
 }
 
-static Result parse_single(Lexer* lexer, char** dest, size_t max_len) {
-    const char* start = &lexer -> buffer[lexer -> current];
-    while (IS_ALPHA(lexer -> c)) {
+static void parse_single(Lexer* lexer, char** dest, size_t max_len) {
+    char** cursor = &lexer -> cursor;
+    char* start = *cursor;
+    while (IS_ALPHA(**cursor)) {
         advance(lexer);
     }
 
-    size_t len = &lexer -> buffer[lexer -> current] - start;
+    (**cursor) = 0;
+    (*cursor)++;
 
-    if (len >= max_len) {
-        lexer_err(lexer, "Input too long");
-        return err("Parsing failed");
-    }
-
-    set_single(lexer -> arena, dest, start, len);
-
-    return ok(NULL);
+    set_single(lexer -> arena, dest, start);
 }
 
-static Result parse_default_flags(Lexer* lexer) {
+static void parse_default_flags(Lexer* lexer) {
+    char** cursor = &lexer -> cursor;
     uint8_t i = 0;
 
-    while (lexer -> c != '\n' && i < MAX_FLAGS) {
+    while (**cursor != '\n' && i < MAX_FLAGS) {
         skip_spaces(lexer);
-        if (lexer -> c == '\n') break;
+        if (**cursor == '\n') break;
 
-        const char* flag_start = &lexer -> buffer[lexer -> current];
-        while (IS_ALPHA(lexer -> c)) {
+        char* flag_start = *cursor;
+        while (IS_ALPHA(**cursor)) {
             advance(lexer);
         }
 
-        size_t flag_len = &lexer -> buffer[lexer -> current] - flag_start;
-        if (flag_len > MAX_FLAG_LEN || flag_start[0] != '-') {
-            lexer_err(lexer, "Invalid flag");
-            return err("Invalid flag");
+        if (**cursor == '\n') {
+            (**cursor) = 0;
+            (*cursor)++;
+            push_default_flag(lexer -> arena, lexer -> config, flag_start);
+            break;
         }
 
-        push_default_flag(lexer -> arena, lexer -> config, flag_start, &flag_len);
+        (**cursor) = 0;
+        (*cursor)++;
+
+        push_default_flag(lexer -> arena, lexer -> config, flag_start);
         i++;
     }
-
-    return ok(NULL);
 }
 
-static Result parse_target_flags(Lexer* lexer) {
+static void parse_target_flags(Lexer* lexer) {
+    char** cursor = &lexer -> cursor;
     uint8_t i = lexer -> config -> target_count;
     uint8_t count = 0;
 
-    while (lexer -> c != '\n' && count < MAX_FLAGS) {
+    while (**cursor != '\n' && count < MAX_FLAGS) {
         skip_spaces(lexer);
-        if (lexer -> c == '\n') break;
+        if (**cursor == '\n') break;
 
-        const char* flag_start = &lexer -> buffer[lexer -> current];
-        while (IS_ALPHA(lexer -> c)) {
+        char* flag_start = *cursor;
+        while (IS_ALPHA(**cursor)) {
             advance(lexer);
         }
 
-        size_t flag_len = &lexer -> buffer[lexer -> current] - flag_start;
-        if (flag_len > MAX_FLAG_LEN || flag_start[0] != '-') {
-            lexer_err(lexer, "Invalid flag");
-            return err("Invalid flag");
+        if (**cursor == '\n') {
+            (**cursor) = 0;
+            (*cursor)++;
+            push_flag(lexer -> arena, lexer -> config, flag_start);
+            break;
         }
 
-        push_flag(lexer -> arena, lexer -> config, flag_start, &flag_len);
+        (**cursor) = 0;
+        (*cursor)++;
+
+        push_flag(lexer -> arena, lexer -> config, flag_start);
         count++;
     }
-
-    return ok(NULL);
 }
 
-static Result parse_sources(Lexer* lexer) {
+static void parse_sources(Lexer* lexer) {
+    char** cursor = &lexer -> cursor;
     uint8_t i = lexer -> config -> target_count;
     uint8_t count = 0;
 
-    while (lexer -> c != '\n' && count < MAX_SOURCES) {
+    while (**cursor != '\n' && count < MAX_SOURCES) {
         skip_spaces(lexer);
-        if (lexer -> c == '\n') break;
+        if (**cursor == '\n') break;
 
-        const char* source_start = &lexer -> buffer[lexer -> current];
-        while (!IS_WHITESPACE(lexer -> c) && lexer -> c != '\n') {
+        char* source_start = *cursor;
+        while (IS_ALPHA(**cursor)) {
             advance(lexer);
         }
 
-        size_t source_len = &lexer -> buffer[lexer -> current] - source_start;
-        if (source_len > MAX_SOURCE_LEN) {
-            lexer_err(lexer, "Invalid source");
-            return err("Invalid source");
+        if (**cursor == '\n') {
+            (**cursor) = 0;
+            (*cursor)++;
+            push_source(lexer -> arena, lexer -> config, source_start);
+            break;
         }
 
-        push_source(lexer -> arena, lexer -> config, source_start, &source_len);
+        (**cursor) = 0;
+        (*cursor)++;
+
+        push_source(lexer -> arena, lexer -> config, source_start);
         count++;
     }
-
-    return ok(NULL);
 }
 
-static Result parse_target_output(Lexer* lexer) {
+static void parse_target_output(Lexer* lexer) {
+    char** cursor = &lexer -> cursor;
     Target* target = lexer -> config -> targets[lexer -> config -> target_count];
 
-    const char* start = &lexer -> buffer[lexer -> current];
-    while (IS_ALPHA(lexer -> c)) {
+    char* start = *cursor;
+    while (IS_ALPHA(**cursor)) {
         advance(lexer);
     }
 
-    const char* end = &lexer -> buffer[lexer -> current];
-    const char* current = end;
+    char* end = *cursor;
+    char* current = end;
 
     if (current == start) {
         lexer_err(lexer, "Invalid output");
-        return err("Invalid output path");
     }
 
     while (*(current - 1) != '/') {
         if (current == start) {
             lexer_err(lexer, "Invalid output");
-            return err("Invalid output path");
         }
         current--;
     }
@@ -206,164 +214,148 @@ static Result parse_target_output(Lexer* lexer) {
 
     len = current - start;
     set_output_dir(lexer -> arena, lexer -> config, start, &len);
-
-    return ok(NULL);
 }
 
-static Result match_options(Lexer* lexer, const char* start, size_t len) {
+static void match_options(Lexer* lexer, const char* start, size_t len) {
     advance(lexer);
     skip_whitespace(lexer);
 
     switch (start[0]) {
         case 'b':
-            if (strncmp(start, "build_dir", len) == 0) return parse_single(lexer, &lexer -> config -> build_dir, MAX_BUILD_DIR_LEN);
-            break;
+            if (strncmp(start, "build_dir", len) == 0) parse_single(lexer, &lexer -> config -> build_dir, MAX_BUILD_DIR_LEN);
+            return;
 
         case 'c':
-            if (strncmp(start, "compiler", len) == 0) return parse_single(lexer, &lexer -> config -> compiler, MAX_COMPILER_LEN); 
-            break;
+            if (strncmp(start, "compiler", len) == 0) parse_single(lexer, &lexer -> config -> compiler, MAX_COMPILER_LEN); 
+            return;
 
         case 'd':
-            if (strncmp(start, "default_flags", len) == 0) return parse_default_flags(lexer);
-            break;
+            if (strncmp(start, "default_flags", len) == 0) parse_default_flags(lexer);
+            return;
 
         case 'f':
-            if (strncmp(start, "flags", len) == 0) return parse_target_flags(lexer);
-            break;
+            if (strncmp(start, "flags", len) == 0) parse_target_flags(lexer);
+            return;
 
         case 'o':
-            if (strncmp(start, "output", len) == 0) return parse_target_output(lexer);
-            break;
+            if (strncmp(start, "output", len) == 0) parse_target_output(lexer);
+            return;
 
         case 's':
-            if (strncmp(start, "sources", len) == 0) return parse_sources(lexer);
-            break;
+            if (strncmp(start, "sources", len) == 0) parse_sources(lexer);
+            return;
     }
 
     lexer_err(lexer, "Unknown option");
-    return err("Unknown option");
 }
 
-static Result parse_key(Lexer* lexer) {
+static void parse_key(Lexer* lexer) {
+    char** cursor = &lexer -> cursor;
     skip_whitespace(lexer);
 
-    if (lexer -> c == '}') {
-        return ok(NULL);
+    if (**cursor == '}') {
+        return;
     }
 
-    const char* start = &lexer -> buffer[lexer -> current];
-    while (IS_ALPHA(lexer -> c)) {
+    const char* start = *cursor;
+    while (IS_ALPHA(**cursor)) {
         advance(lexer);
     }
 
-    size_t len = &lexer -> buffer[lexer -> current] - start;
-    return match_options(lexer, start, len);
+    size_t len = *cursor - start;
+    (**cursor) = 0;
+    (*cursor)++;
+
+    match_options(lexer, start, len);
 }
 
-static Result expect_keyword(Lexer* lexer, const char* keyword) {
-    const char* start = &lexer -> buffer[lexer -> current];
-    while (IS_ALPHA(lexer -> c)) {
+static void expect_keyword(Lexer* lexer, const char* keyword) {
+    char** cursor = &lexer -> cursor;
+    const char* start = *cursor;
+    while (IS_ALPHA(**cursor)) {
         advance(lexer);
     }
 
-    size_t len = &lexer -> buffer[lexer -> current] - start;
+    size_t len = *cursor - start;
     if (len != strlen(keyword) || strncmp(start, keyword, len) != 0) {
         char msg[64];
         snprintf(msg, sizeof(msg), "Expected: %s", keyword);
         lexer_err(lexer, msg);
-        return err("Parsing failed");
     }
-
-    return ok(NULL);
 }
 
-static Result expect_char(Lexer* lexer, const char expected) {
-    if (lexer -> c != expected) {
+static void expect_char(Lexer* lexer, const char expected) {
+    char** cursor = &lexer -> cursor;
+
+    if (**cursor != expected) {
         char msg[16];
         snprintf(msg, sizeof(msg), "Expected: %c", expected);
         lexer_err(lexer, msg);
-        return err("Parsing failed");
     }
 
     advance(lexer);
-    return ok(NULL);
 }
 
-static Result parse_identifier(Lexer* lexer, char** dest, size_t max_len) {
-    const char* start = &lexer -> buffer[lexer -> current];
-    while (IS_ALPHA(lexer ->c)) {
+static void parse_identifier(Lexer* lexer, char** dest, size_t max_len) {
+    char** cursor = &lexer -> cursor;
+    char* start = *cursor;
+
+    while (IS_ALPHA(**cursor)) {
         advance(lexer);
     }
 
-    size_t len = &lexer -> buffer[lexer -> current] - start;
-    if (len >= max_len) {
-        lexer_err(lexer, "Identifier too long");
-        return err("Parsing failed");
-    }
+    (**cursor) = 0;
+    (*cursor)++;
 
-    set_single(lexer -> arena, dest, start, len);
-    return ok(NULL);
+    set_single(lexer -> arena, dest, start);
 }
 
-static Result parse_identifier_into_buffer(Lexer* lexer, char* buffer, size_t buffer_size) {
-    const char* start = &lexer -> buffer[lexer -> current];
-    while (IS_ALPHA(lexer -> c)) {
+static void parse_identifier_into_buffer(Lexer* lexer, char* buffer, size_t buffer_size) {
+    char** cursor = &lexer -> cursor;
+    const char* start = *cursor;
+
+    while (IS_ALPHA(**cursor)) {
         advance(lexer);
     }
 
-    size_t len = &lexer -> buffer[lexer -> current] - start;
+    size_t len = *cursor - start;
+    (**cursor) = 0;
+    (*cursor)++;
+
     if (len >= buffer_size) {
         lexer_err(lexer, "Identifier too long");
-        return err("Parsing failed");
     }
 
     arena_memcpy(buffer, start, len);
     buffer[len] = '\0';
-    return ok(NULL);
 }
 
-static Result parse_config_section(Lexer* lexer) {
-    Result result;
+static void parse_config_section(Lexer* lexer) {
+    char** cursor = &lexer -> cursor;
 
-    result = expect_keyword(lexer, "config");
-    if (IS_ERR(result)) {
-        return err(ERR_MSG(result));
-    }
-
+    expect_keyword(lexer, "config");
     skip_whitespace(lexer);
 
-    result = expect_char(lexer, '{');
-    if (IS_ERR(result)) {
-        return err(ERR_MSG(result));
-    }
+    expect_char(lexer, '{');
 
     skip_whitespace(lexer);
-    while (lexer -> c != '}') {
-        result = parse_key(lexer);
-        if (IS_ERR(result)) return result;
+    while (**cursor != '}') {
+        parse_key(lexer);
         skip_whitespace(lexer);
     }
 
     advance(lexer);
-    return ok(NULL);
 }
 
-static Result parse_target_section(Lexer* lexer) {
-    Result result;
+static void parse_target_section(Lexer* lexer) {
+    char** cursor = &lexer -> cursor;
 
-    result = expect_keyword(lexer, "target");
-    if (IS_ERR(result)) {
-        return err(ERR_MSG(result));
-    }
-
+    expect_keyword(lexer, "target");
     skip_whitespace(lexer);
 
-    if (IS_ALPHA(lexer -> c)) {
+    if (IS_ALPHA(**cursor)) {
         char type[32];
-        result = parse_identifier_into_buffer(lexer, type, sizeof(type));
-        if (IS_ERR(result)) {
-            return err(ERR_MSG(result));
-        }
+        parse_identifier_into_buffer(lexer, type, sizeof(type));
 
         switch (type[0]) {
             case 'e':
@@ -371,21 +363,21 @@ static Result parse_target_section(Lexer* lexer) {
                     set_type(lexer -> arena, lexer -> config, Executable);
                     break;
                 }
-                return err("Unknown target type");
+                lexer_err(lexer, "uknown target type");
 
             case 't':
                 if (strcmp(type, "test") == 0) {
                     set_type(lexer -> arena, lexer -> config, Test);
                     break;
                 }
-                return err("Unknown target type");
+                lexer_err(lexer, "uknown target type");
 
             case 'd':
                 if (strcmp(type, "debug") == 0) {
                     set_type(lexer -> arena, lexer -> config, Debug);
                     break;
                 }
-                return err("Unknown target type");
+                lexer_err(lexer, "uknown target type");
 
             case 's':
                 if (strcmp(type, "static_lib") == 0) {
@@ -395,69 +387,55 @@ static Result parse_target_section(Lexer* lexer) {
                     set_type(lexer -> arena, lexer -> config, SharedLib);
                     break;
                 }
-                return err("Unknown target type");
+                lexer_err(lexer, "uknown target type");
 
             default:
                 lexer_err(lexer, "Uknown target type");
-                return err("Uknown target type");
         }
     }
 
     skip_whitespace(lexer);
 
     Target* target = lexer -> config -> targets[lexer -> config -> target_count];
-    result = parse_identifier(lexer, &target -> name, MAX_NAME_LEN);
-    if (IS_ERR(result)) return result;
+    parse_identifier(lexer, &target -> name, MAX_NAME_LEN);
 
     skip_whitespace(lexer);
-
-    result = expect_char(lexer, '{');
-    if (IS_ERR(result)) {
-        return err(ERR_MSG(result));
-    }
-
+    expect_char(lexer, '{');
     skip_whitespace(lexer);
 
-    while (lexer -> c != '}') {
-        result = parse_key(lexer);
-        if (IS_ERR(result)) return result;
+    while (**cursor != '}') {
+        parse_key(lexer);
         skip_whitespace(lexer);
     }
 
     advance(lexer);
     lexer -> config -> target_count++;
-
-    return ok(NULL);
 }
 
-Result lexer_parse(ArenaAllocator* arena, const char* buffer, uint8_t nest_count) {
+CatalyzeConfig* lexer_parse(ArenaAllocator* arena, char* buffer, uint8_t nest_count) {
     CatalyzeConfig* config = arena_alloc(arena, sizeof(*config));
     arena_memset(config, 0, sizeof(*config));
 
     Lexer* lexer = create_lexer(arena, config, buffer);
-    Result result;
 
     config -> target_count = 0;
     config -> default_flag_count = 0;
     config -> nest_count = nest_count;
 
     skip_whitespace(lexer);
-    result = parse_config_section(lexer);
-    if (IS_ERR(result)) {
-        return err(ERR_MSG(result));
-    }
+    parse_config_section(lexer);
 
+    char** cursor = &lexer -> cursor;
     skip_whitespace(lexer);
-    while (lexer -> c == 't' && lexer -> config -> target_count < MAX_TARGETS) {
-        result = parse_target_section(lexer);
-        if (IS_ERR(result)) return result;
+
+    while (**cursor == 't' && lexer -> config -> target_count < MAX_TARGETS) {
+        parse_target_section(lexer);
         skip_whitespace(lexer);
     }
 
     if (lexer -> config -> target_count == 0) {
         lexer_err(lexer, "At least one target is required");
-        return err("No targets found");
     }
 
-    return ok(lexer -> config);
+    return lexer -> config;
 }

@@ -1,7 +1,6 @@
 #include "config.h"
 #include "lexer.h"
 
-#include <dirent.h>
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -10,40 +9,29 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-Result push_default_flag(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len) {
-    if (config == NULL || start == NULL || len == NULL) {
-        return err("Null value, push_default_flag");
-    }
-
-    if (*len >= MAX_FLAG_LEN) {
-        return err("Flag too long");
-    }
-
-    if (config -> default_flag_count >= MAX_FLAGS) {
-        return err("Defulat flags at max capacity");
-    }
-
-    if (config -> default_flags == NULL) {
-        config -> default_flags = arena_alloc(arena, MAX_FLAGS * sizeof(char*));
-        arena_memset(config -> default_flags, 0, *len);
-    }
-
-    config -> default_flags[config -> default_flag_count] = arena_alloc(arena, *len + 1);
-    arena_memcpy(config -> default_flags[config -> default_flag_count], start, *len);
-    config -> default_flags[config -> default_flag_count][*len] = '\0';
-    config -> default_flag_count++;
-
-    return ok(NULL);
-
+static inline void config_err(const char* msg) {
+    printf("\e[1mError in config.cat:\e[0m %s\n", msg);
+    exit(1);
 }
 
-Result push_flag(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len) {
-    if (config == NULL || start == NULL || len == NULL) {
-        return err("Null value, push_flag");
+void push_default_flag(ArenaAllocator* arena, CatalyzeConfig* config, char* start) {
+    if (config == NULL || start == NULL) {
+        config_err("Null value, push_default_flag");
     }
 
-    if (*len >= MAX_FLAG_LEN) {
-        return err("Flag too long");
+    size_t flag_count = config -> default_flag_count;
+
+    if (config -> default_flags == NULL) {
+        config -> default_flags = arena_alloc(arena, 32 * sizeof(char*));
+    }
+
+    config -> default_flags[flag_count++] = start;
+    config -> default_flag_count++;
+}
+
+void push_flag(ArenaAllocator* arena, CatalyzeConfig* config, char* start) {
+    if (config == NULL || start == NULL) {
+        config_err("Null value, push_flag");
     }
 
     Target* target = config -> targets[config -> target_count];
@@ -56,29 +44,20 @@ Result push_flag(ArenaAllocator* arena, CatalyzeConfig* config, const char* star
     }
 
     if (target -> flag_count >= MAX_FLAGS) {
-        return err("Target flags at max capacity");
+        config_err("Target flags at max capacity");
     }
 
     if (target -> flags == NULL) {
-        target -> flags = arena_alloc(arena, MAX_FLAGS * (sizeof(char*)));
-        arena_memset(target -> flags, 0, *len);
+        target -> flags = arena_alloc(arena, 32 * (sizeof(char*)));
     }
 
-    target -> flags[target -> flag_count] = arena_alloc(arena, *len + 1);
-    arena_memcpy(target -> flags[target -> flag_count], start, *len);
-    target -> flags[target -> flag_count][*len] = '\0';
+    target -> flags[target -> flag_count] = start;
     target -> flag_count++;
-
-    return ok(NULL);
 }
 
-Result push_source(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len) {
-    if (config == NULL || start == NULL || len == NULL) {
-        return err("Null value, push_source");
-    }
-
-    if (*len >= MAX_SOURCE_LEN) {
-        return err("Source path too long");
+void push_source(ArenaAllocator* arena, CatalyzeConfig* config, char* start) {
+    if (config == NULL || start == NULL) {
+        config_err("Null value, push_source");
     }
 
     Target* target = config -> targets[config -> target_count];
@@ -91,80 +70,52 @@ Result push_source(ArenaAllocator* arena, CatalyzeConfig* config, const char* st
     }
 
     if (target -> source_count >= MAX_SOURCES) {
-        return err("Target sources at max capacity");
+        config_err("Target sources at max capacity");
     }
 
     if (target -> sources == NULL) {
-        target -> sources = arena_alloc(arena, MAX_SOURCES * (sizeof(char*)));
-        arena_memset(target -> sources, 0, *len);
+        target -> sources = arena_alloc(arena, 32 * (sizeof(char*)));
     }
 
-    target -> sources[target -> source_count] = arena_alloc(arena, *len + 1);
-    arena_memcpy(target -> sources[target -> source_count], start, *len);
-    target -> sources[target -> source_count][*len] = '\0';
+    target -> sources[target -> source_count] = start;
     target -> source_count++;
-
-    return ok(NULL);
 }
 
-Result set_single(ArenaAllocator* arena, char** dest, const char* start, size_t len) {
-    if (len >= MAX_NAME_LEN) {
-        return err("Field too long");
-    }
-
+void set_single(ArenaAllocator* arena, char** dest, char* start) {
     if (*dest == NULL) {
-        *dest = arena_alloc(arena, len + 1);
-        arena_memset((void*) *dest, 0, len + 1);
+        *dest = arena_alloc(arena, sizeof(char*));
     }
 
-    arena_memcpy((void*) *dest, start, len);
-    (*dest)[len] = '\0';
-    return ok(NULL);
+    *dest = start;
 }
 
-Result set_compiler(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len) {
-    if (config == NULL || start == NULL || len == NULL) {
-        return err("Null value, set_compiler");
-    }
-
-    if (*len >= MAX_COMPILER_LEN) {
-        return err("Compiler too long");
+void set_compiler(ArenaAllocator* arena, CatalyzeConfig* config, char* start) {
+    if (config == NULL || start == NULL) {
+        config_err("Null value, set_compiler");
     }
 
     if (config -> compiler == NULL) {
-        config -> compiler = arena_alloc(arena, *len + 1);
-        arena_memset(config -> default_flags, 0, *len);
+        config -> compiler = arena_alloc(arena, sizeof(char*));
     }
 
-    arena_memcpy(config -> compiler, start, *len);
-    config -> compiler[*len] = '\0';
-
-    return ok(NULL);
+    config -> compiler = start;
 }
 
-Result set_build_dir(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len) {
-    if (config == NULL || start == NULL || len == NULL) {
-        return err("Null value, set_build_dir");
-    }
-
-    if (*len >= MAX_BUILD_DIR_LEN) {
-        return err("Build directory path too long");
+void set_build_dir(ArenaAllocator* arena, CatalyzeConfig* config, char* start) {
+    if (config == NULL || start == NULL) {
+        config_err("Null value, set_build_dir");
     }
 
     if (config -> build_dir == NULL) {
-        config -> build_dir = arena_alloc(arena, *len + 1);
-        arena_memset(config -> default_flags, 0, *len);
+        config -> build_dir = arena_alloc(arena, sizeof(char*));
     }
 
-    arena_memcpy(config -> build_dir, start, *len);
-    config -> build_dir[*len] = '\0';
-
-    return ok(NULL);
+    config -> build_dir = start;
 }
 
-Result set_name(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len) {
-    if (config == NULL || start == NULL || len == NULL) {
-        return err("Null value, set_name");
+void set_name(ArenaAllocator* arena, CatalyzeConfig* config, char* start) {
+    if (config == NULL || start == NULL) {
+        config_err("Null value, set_name");
     }
 
     Target* target = config -> targets[config -> target_count];
@@ -177,19 +128,15 @@ Result set_name(ArenaAllocator* arena, CatalyzeConfig* config, const char* start
     }
 
     if (target -> name == NULL) {
-        target -> name = arena_alloc(arena, *len + 1);
-        arena_memset(target -> name, 0, *len);
+        target -> name = arena_alloc(arena, sizeof(char*));
     }
 
-    arena_memcpy(target -> name, start, *len);
-    target -> name[*len] = '\0';
-
-    return ok(NULL);
+    target -> name = start;
 }
 
-Result set_type(ArenaAllocator* arena, CatalyzeConfig* config, TargetType type) {
+void set_type(ArenaAllocator* arena, CatalyzeConfig* config, TargetType type) {
     if (config == NULL) {
-        return err("Null value, set_type");
+        config_err("Null value, set_type");
     }
 
     if (config -> targets == NULL) {
@@ -205,13 +152,11 @@ Result set_type(ArenaAllocator* arena, CatalyzeConfig* config, TargetType type) 
     }
 
     target -> type = type;
-
-    return ok(NULL);
 }
 
-Result set_output_dir(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len) {
+void set_output_dir(ArenaAllocator* arena, CatalyzeConfig* config, char* start, size_t* len) {
     if (config == NULL || start == NULL || len == NULL) {
-        return err("Null value, set_output_dir");
+        config_err("Null value, set_output_dir");
     }
 
     Target* target = config -> targets[config -> target_count];
@@ -227,14 +172,11 @@ Result set_output_dir(ArenaAllocator* arena, CatalyzeConfig* config, const char*
 
     arena_memcpy(target -> output_dir, start, *len);
     target -> output_dir[*len] = '\0';
-
-
-    return ok(NULL);
 }
 
-Result set_output_name(ArenaAllocator* arena, CatalyzeConfig* config, const char* start, size_t* len) {
+void set_output_name(ArenaAllocator* arena, CatalyzeConfig* config, char* start, size_t* len) {
     if (config == NULL || start == NULL || len == NULL) {
-        return err("Null value, set_output_name");
+        config_err("Null value, set_output_name");
     }
 
     Target* target = config -> targets[config -> target_count];
@@ -250,11 +192,9 @@ Result set_output_name(ArenaAllocator* arena, CatalyzeConfig* config, const char
 
     arena_memcpy(target -> output_name, start, *len);
     target -> output_name[*len] = '\0';
-
-    return ok(NULL);
 }
 
-Result find_config_file(ArenaAllocator* arena, uint8_t* nest_count) {
+static char* find_config_file(ArenaAllocator* arena, uint8_t* nest_count) {
     static const char* path_templates[] = {
         "./config.cat",
         "../config.cat", 
@@ -283,41 +223,38 @@ Result find_config_file(ArenaAllocator* arena, uint8_t* nest_count) {
             size_t path_len = strlen(path_templates[i]);
             char* result_path = arena_alloc(arena, path_len + 1);
             if (!result_path) {
-                return err("Arena allocation failed");
+                config_err("Arena allocation failed");
             }
 
             strcpy(result_path, path_templates[i]);
-            return ok(result_path);
+            return result_path;
         }
     }
     
-    return err("config.cat not found");
+    config_err("config.cat not found");
+    exit(1);
 }
 
-Result parse_config(ArenaAllocator* arena) { 
+CatalyzeConfig* parse_config(ArenaAllocator* arena) { 
     uint8_t nest_count = 0;
-    Result path = find_config_file(arena, &nest_count);
+    char* path = find_config_file(arena, &nest_count);
 
-    if (IS_ERR(path)) {
-        return err(ERR_MSG(path));
-    } 
-
-    int fd = open(path.data, O_RDONLY);
+    int fd = open(path, O_RDONLY);
     if (fd == -1) {
-        return err("Failed to open config.cat");
+        config_err("Failed to open config.cat");
     }
 
     struct stat st;
     if (fstat(fd, &st) == -1) {
         close(fd);
-        return err("Failed to get stats about config.cat");
+        config_err("Failed to get stats about config.cat");
     }
 
     char* buffer = arena_alloc(arena, st.st_size + 1);
     ssize_t bytes_read = read(fd, buffer, st.st_size);
     if (bytes_read != st.st_size) {
         close(fd);
-        return err("Failed to read config.cat");
+        config_err("Failed to read config.cat");
     }
 
     close(fd);
