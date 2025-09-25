@@ -22,7 +22,7 @@ void push_default_flag(ArenaAllocator* arena, CatalyzeConfig* config, char* star
     size_t flag_count = config -> default_flag_count;
 
     if (config -> default_flags == NULL) {
-        config -> default_flags = arena_alloc(arena, 32 * sizeof(char*));
+        config -> default_flags = arena_alloc(arena, 16 * sizeof(char*));
     }
 
     config -> default_flags[flag_count++] = start;
@@ -48,7 +48,7 @@ void push_flag(ArenaAllocator* arena, CatalyzeConfig* config, char* start) {
     }
 
     if (target -> flags == NULL) {
-        target -> flags = arena_alloc(arena, 32 * (sizeof(char*)));
+        target -> flags = arena_alloc(arena, 16 * (sizeof(char*)));
     }
 
     target -> flags[target -> flag_count] = start;

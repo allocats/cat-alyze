@@ -222,28 +222,46 @@ static void match_options(Lexer* lexer, const char* start, size_t len) {
 
     switch (start[0]) {
         case 'b':
-            if (strncmp(start, "build_dir", len) == 0) parse_single(lexer, &lexer -> config -> build_dir, MAX_BUILD_DIR_LEN);
-            return;
+            if (strncmp(start, "build_dir", len) == 0) {
+                parse_single(lexer, &lexer -> config -> build_dir, MAX_BUILD_DIR_LEN);
+                return;
+            }
+            break;
 
         case 'c':
-            if (strncmp(start, "compiler", len) == 0) parse_single(lexer, &lexer -> config -> compiler, MAX_COMPILER_LEN); 
-            return;
+            if (strncmp(start, "compiler", len) == 0) {
+                parse_single(lexer, &lexer -> config -> compiler, MAX_COMPILER_LEN); 
+                return;
+            }
+            break;
 
         case 'd':
-            if (strncmp(start, "default_flags", len) == 0) parse_default_flags(lexer);
-            return;
+            if (strncmp(start, "default_flags", len) == 0) {
+                parse_default_flags(lexer);
+                return;
+            }
+            break;
 
         case 'f':
-            if (strncmp(start, "flags", len) == 0) parse_target_flags(lexer);
-            return;
+            if (strncmp(start, "flags", len) == 0) {
+                parse_target_flags(lexer);
+                return;
+            }
+            break;
 
         case 'o':
-            if (strncmp(start, "output", len) == 0) parse_target_output(lexer);
-            return;
+            if (strncmp(start, "output", len) == 0) {
+                parse_target_output(lexer);
+                return;
+            }
+            break;
 
         case 's':
-            if (strncmp(start, "sources", len) == 0) parse_sources(lexer);
-            return;
+            if (strncmp(start, "sources", len) == 0) {
+                parse_sources(lexer);
+                return;
+            }
+            break;
     }
 
     lexer_err(lexer, "Unknown option");
