@@ -93,7 +93,7 @@ void link_executable(CatalyzeConfig* config, const char* path_prefix, Target* bu
     offset += snprintf(cmd + offset, size - offset, " -o");
     offset += snprintf(cmd + offset, size - offset, " %s%s/%s", path_prefix, build_target -> output_dir, build_target -> output_name);
 
-    if (system(cmd) != 0) {
+    if (UNLIKELY(system(cmd) != 0)) {
         build_err("compiler failed");
     }
 }
