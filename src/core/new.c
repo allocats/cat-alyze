@@ -5,25 +5,28 @@
 #include "../config/config.h"
 #include "../utils/macros.h"
 
-#include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
-static inline Result create_dir(const char* name) {
+static inline void new_err(const char* msg) {
+    printf("\e[1mError:\e[0m %s\n", msg);
+    exit(1);
+}
+
+static inline void create_dir(const char* name) {
     size_t size = 32 + MAX_NAME_LEN;
     char cmd[size];
     size_t offset = snprintf(cmd, size, "mkdir -p ");
     offset += snprintf(cmd + offset, size - offset, "%s/src", name);
 
     if (system(cmd) != 0) {
-        return err("Mkdir failed");
+        new_err("Mkdir failed");
     }
-
-    return ok(NULL);
 }
 
-static inline Result create_config(const char* name) {
+static inline void create_config(const char* name) {
     size_t size = 32 + MAX_NAME_LEN;
     char path[size];
     snprintf(path, size, "%s/config.cat", name);
@@ -31,16 +34,14 @@ static inline Result create_config(const char* name) {
     FILE* fptr = fopen(path, "w");
     if (UNLIKELY(fptr == NULL)) {
         fclose(fptr);
-        return err("Failed to write to config.cat");
+        new_err("Failed to write to config.cat");
     }
 
     write_config(fptr, name);
-
     fclose(fptr);
-    return ok(NULL);
 }
 
-static inline Result create_main(const char* name) {
+static inline void create_main(const char* name) {
     size_t size = 32 + MAX_NAME_LEN;
     char path[size];
     snprintf(path, size, "%s/src/main.c", name);
@@ -48,34 +49,19 @@ static inline Result create_main(const char* name) {
     FILE* fptr = fopen(path, "w");
     if (UNLIKELY(fptr == NULL)) {
         fclose(fptr);
-        return err("Failed to write to main.c");
+        new_err("Failed to write to main.c");
     }
 
     fprintf(fptr, "#include <stdio.h>\n\nint main(int argc, char* argv[]) {\n\tprintf(\"Hello world!\");\n}");
-
     fclose(fptr);
-    return ok(NULL);
 } 
 
-Result new_project(const char* name) {
+void new_project(const char* name) {
     if (strlen(name) > MAX_NAME_LEN) {
-        return err("Project name too long");
+        new_err("Project name too long");
     }
 
-    Result result = create_dir(name);
-    if (UNLIKELY(IS_ERR(result))) {
-        return err(ERR_MSG(result));
-    }
-
-    result = create_config(name);
-    if (UNLIKELY(IS_ERR(result))) {
-        return err(ERR_MSG(result));
-    }
-
-    result = create_main(name);
-    if (UNLIKELY(IS_ERR(result))) {
-        return err(ERR_MSG(result));
-    }
-
-    return ok(NULL);
+    create_dir(name);
+    create_config(name);
+    create_main(name);
 }

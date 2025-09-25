@@ -1,6 +1,5 @@
 #include "debug.h"
 
-#include "../utils/result.h"
 #include "../utils/arena.h"
 #include "../config/config.h"
 #include "build.h"
@@ -9,17 +8,14 @@
 #include <string.h>
 #include <stdio.h>
 
-static Result build_debug_target(ArenaAllocator* arena, CatalyzeConfig* config, Target* target) {
-    Result result = make_build_dir(config -> build_dir);
+static inline void debug_err(const char* msg) {
+    printf("\e[1mError:\e[0m %s\n", msg);
+    exit(1);
+}
 
-    if (IS_ERR(result)) {
-        return err(ERR_MSG(result));
-    }
-
-    result = make_output_dir(target -> output_dir);
-    if (IS_ERR(result)) {
-        return err(ERR_MSG(result));
-    }
+static void build_debug_target(ArenaAllocator* arena, CatalyzeConfig* config, Target* target) {
+    make_build_dir(config -> build_dir);
+    make_output_dir(target -> output_dir);
 
     char* path_prefix = arena_alloc(arena, (config -> nest_count * 3) + 1);
     path_prefix[0] = '\0';
@@ -73,20 +69,14 @@ static Result build_debug_target(ArenaAllocator* arena, CatalyzeConfig* config, 
         all_object_files[i] = arena_strdup(arena, object_file);
 
         if (system(cmd) != 0) {
-            return err("Failed to compile");
+            debug_err("Failed to compile");
         }
     }
 
-    result = link_executable(config, path_prefix, target, all_flags, flag_count, all_object_files);
-
-    if (IS_ERR(result)) {
-        return err(ERR_MSG(result));
-    }
-
-    return ok(NULL);
+    link_executable(config, path_prefix, target, all_flags, flag_count, all_object_files);
 }
 
-static Result run_debug_target(ArenaAllocator* arena, CatalyzeConfig* config, const char* name) {
+static void run_debug_target(ArenaAllocator* arena, CatalyzeConfig* config, const char* name) {
     Target* target = NULL;
 
     for (uint8_t i = 0; i < config -> target_count; i++) {
@@ -97,14 +87,10 @@ static Result run_debug_target(ArenaAllocator* arena, CatalyzeConfig* config, co
     }
 
     if (target == NULL) {
-        return err("Target not found");
+        debug_err("Target not found");
     }
 
-    Result result = build_debug_target(arena, config, target);
-
-    if (IS_ERR(result)) {
-        return err(ERR_MSG(result));
-    }
+    build_debug_target(arena, config, target);
 
     size_t size = 32 + strlen(target -> output_dir) + strlen(target -> output_name) + (3 * config -> nest_count);
     char cmd[size];
@@ -118,51 +104,33 @@ static Result run_debug_target(ArenaAllocator* arena, CatalyzeConfig* config, co
     snprintf(cmd, size, "./%s%s%s", path_prefix, target -> output_dir, target -> output_name);
 
     if (system(cmd) != 0) {
-        return err("Run failed");
+        debug_err("Run failed");
     }
-
-    return ok(NULL);
 }
 
-Result debug_all(ArenaAllocator* arena, CatalyzeConfig* config) {
-    Result result;
+void debug_all(ArenaAllocator* arena, CatalyzeConfig* config) {
     uint8_t count = 0;
 
     for (uint8_t i = 0; i < config -> target_count; i++) {
         if (config -> targets[i] -> type == Debug) {
-            result = run_debug_target(arena, config, config -> targets[i] -> name);
-
-            if (IS_ERR(result)) {
-                return err(ERR_MSG(result));
-            }
-
+            run_debug_target(arena, config, config -> targets[i] -> name);
             count++;
         }
     }
 
     if (count == 0) {
-        return err("No debug targets found");
-    } else {
-        return ok(NULL);
-    }
+        debug_err("No debug targets found");
+    } 
 }
 
-Result debug_target(ArenaAllocator* arena, CatalyzeConfig* config, const char* name) {
-    Result result;
-
+void debug_target(ArenaAllocator* arena, CatalyzeConfig* config, const char* name) {
     for (uint8_t i = 0; i < config -> target_count; i++) {
         if (config -> targets[i] -> type != Debug && strcmp(config -> targets[i] -> name, name) == 0) {
-            return err("Target is not of debug type");
+            debug_err("Target is not of debug type");
         } else if (config -> targets[i] -> type != Debug && strcmp(config -> targets[i] -> name, name) == 0) {
-            result = run_debug_target(arena, config, config -> targets[i] -> name);
-
-            if (IS_ERR(result)) {
-                return err(ERR_MSG(result));
-            } else {
-                return ok(NULL);
-            }
+            run_debug_target(arena, config, config -> targets[i] -> name);
         }
     }
 
-    return err("Target not found");
+    debug_err("Target not found");
 }
