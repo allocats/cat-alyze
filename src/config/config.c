@@ -260,5 +260,5 @@ CatalyzeConfig* parse_config(ArenaAllocator* arena) {
     close(fd);
     buffer[st.st_size] = '\0';
 
-    return lexer_parse(arena, buffer, nest_count);
+    return lexer_parse(arena, buffer, st.st_size, nest_count);
 }

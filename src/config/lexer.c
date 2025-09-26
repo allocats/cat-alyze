@@ -120,15 +120,14 @@ void lexer_err(Lexer* lexer, const char* msg) {
     exit(1);
 }
 
-static inline Lexer* create_lexer(ArenaAllocator* arena, CatalyzeConfig* config, char* buffer) {
+static inline Lexer* create_lexer(ArenaAllocator* arena, CatalyzeConfig* config, char* buffer, const size_t size) {
     Lexer* lexer = arena_alloc(arena, sizeof(*lexer));
 
     lexer -> arena = arena;
     lexer -> config = config;
-    lexer -> len = strlen(buffer);
     lexer -> buffer = buffer;
     lexer -> cursor = lexer -> buffer;
-    lexer -> end = lexer -> buffer + lexer -> len;
+    lexer -> end = lexer -> buffer + size;
 
     return lexer;
 }
@@ -478,11 +477,11 @@ static void parse_target_section(Lexer* lexer) {
     lexer -> config -> target_count++;
 }
 
-CatalyzeConfig* lexer_parse(ArenaAllocator* arena, char* buffer, uint8_t nest_count) {
+CatalyzeConfig* lexer_parse(ArenaAllocator* arena, char* buffer, const size_t size, const uint8_t nest_count) {
     CatalyzeConfig* config = arena_alloc(arena, sizeof(*config));
     arena_memset(config, 0, sizeof(*config));
 
-    Lexer* lexer = create_lexer(arena, config, buffer);
+    Lexer* lexer = create_lexer(arena, config, buffer, size);
 
     config -> target_count = 0;
     config -> default_flag_count = 0;

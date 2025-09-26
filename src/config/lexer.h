@@ -10,11 +10,10 @@ typedef struct {
     char* buffer;
     char* cursor;
     char* end;
-    size_t len;
     ArenaAllocator* arena;
     CatalyzeConfig* config;
 } Lexer;
 
-CatalyzeConfig* lexer_parse(ArenaAllocator* arena, char* buffer, uint8_t nest_count);
+CatalyzeConfig* lexer_parse(ArenaAllocator* arena, char* buffer, const size_t size, const uint8_t nest_count);
 
 #endif // !LEXER_H
