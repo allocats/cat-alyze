@@ -13,12 +13,13 @@
 
 #include "utils/arena.h"
 #include "utils/help.h"
+#include "utils/macros.h"
 #include "utils/timer.h"
 
 static ArenaAllocator arena = {0};
 
 static void print_err(const char* msg) {
-    fprintf(stderr, "\e[1mError:\e[0m %s\n", msg);
+    fprintf(stderr, "\033[1mError:\033[0m %s\n", msg);
     exit(1);
 }
 
@@ -60,7 +61,7 @@ static int handle_build(int argc, char* argv[]) {
     }
 
     timer_end(&timer);
-    printf("\nCompiling \e[1mfinished\e[0m! Built all targets. Took %.3f seconds\n", timer_elapsed_seconds(&timer));
+    printf("\nCompiling \033[1mfinished\033[0m! Built all targets. Took %.3f seconds\n", timer_elapsed_seconds(&timer));
 
     return 0;
 }
@@ -79,20 +80,29 @@ static int handle_debug(int argc, char* argv[]) {
     }
 
     timer_end(&timer);
-    printf("\nCompiling \e[1mfinished\e[0m! Built all targets. Took %.3f seconds\n", timer_elapsed_seconds(&timer));
+    printf("\nCompiling \033[1mfinished\033[0m! Built all targets. Took %.3f seconds\n", timer_elapsed_seconds(&timer));
     return 0;
 }
 
 static int handle_init(int argc, char* argv[]) {
+    UNUSED(argv);
+
+    if (argc != 2) {
+        print_err("Unexpected flags!");
+    }
+
     init_project();
     printf("\nCreated! Good luck with your project!\n");
     return 0;
 }
 
 static int handle_new(int argc, char* argv[]) {
-    new_project(argv[2]);
+    if (argc != 3) {
+        print_err("Unexpected flags!");
+    }
 
-    printf("\nCreated \e[1m%s\e[0m! Good luck coding and have fun :3!\n", argv[2]);
+    new_project(argv[2]);
+    printf("\nCreated \033[1m%s\033[0m! Good luck coding and have fun :3!\n", argv[2]);
     return 0;
 }
 
@@ -111,14 +121,11 @@ static int handle_test(int argc, char* argv[]) {
     // TODO: Testing lol
     
     CatalyzeConfig* config = parse_config(&arena);
-    printf("%p : %zu bytes\n", config, sizeof(*config));
-    // print_config(config);
-
-    // if (argc == 2) {
-    //     run_project_all(&arena, config);
-    // } else {
-    //     run_project_target(&arena, config, argv[2]);
-    // }
+    if (argc == 2) {
+        run_project_all(&arena, config);
+    } else {
+        run_project_target(&arena, config, argv[2]);
+    }
 
     return 0;
 }
@@ -151,8 +158,7 @@ int main(int argc, char* argv[]) {
     }
 
     init_arena(&arena, 4096 / sizeof(uintptr_t));
-    void* warmup = arena_alloc(&arena, 0);
 
     int result = cmd -> handler(argc, argv);
-    exit(0);
+    exit(result);
 }

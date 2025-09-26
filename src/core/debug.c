@@ -9,8 +9,8 @@
 #include <string.h>
 #include <stdio.h>
 
-static inline void debug_err(const char* msg) {
-    printf("\e[1mError:\e[0m %s\n", msg);
+void debug_err(const char* msg) {
+    printf("\033[1mError:\033[0m %s\n", msg);
     exit(1);
 }
 

@@ -13,8 +13,8 @@
 
 #define MAX_THREADS sysconf(_SC_NPROCESSORS_ONLN)
 
-static inline void build_err(const char* msg) {
-    printf("\e[1mError:\e[0m %s\n", msg);
+void build_err(const char* msg) {
+    printf("\033[1mError:\033[0m %s\n", msg);
     exit(1);
 }
 

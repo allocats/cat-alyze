@@ -65,6 +65,5 @@ void set_output_dir(ArenaAllocator* arena, CatalyzeConfig* config, char* start);
 void set_output_name(ArenaAllocator* arena, CatalyzeConfig* config, char* start);
 
 CatalyzeConfig* parse_config(ArenaAllocator* arena);
-// void print_config(const CatalyzeConfig* config);
 
 #endif // !CONFIG_H

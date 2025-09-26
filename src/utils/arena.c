@@ -16,14 +16,14 @@ inline size_t align_size(size_t size) {
     return (size + 31) & ~(31);
 }
 
-inline void init_arena(ArenaAllocator* arena, size_t default_capacity) {
+void init_arena(ArenaAllocator* arena, size_t default_capacity) {
     assert(arena);
     arena -> start = NULL;
     arena -> end = NULL;
     arena -> default_capacity = default_capacity == 0 ? ARENA_DEFAULT_CAPACITY : align_size(default_capacity);
 }
 
-static __attribute__((noinline)) ArenaBlock* new_block(size_t default_capacity, size_t size) {
+static ArenaBlock* new_block(size_t default_capacity, size_t size) {
     size_t capacity = default_capacity;
 
     while (UNLIKELY(size > capacity * sizeof(uintptr_t))) {
@@ -47,7 +47,7 @@ static inline void free_block(ArenaBlock* block) {
     free(block);
 }
 
-inline void* arena_alloc(ArenaAllocator* arena, size_t size) {
+void* arena_alloc(ArenaAllocator* arena, size_t size) {
     ArenaBlock* current = arena -> end;
 
     if (UNLIKELY(!current)) {
@@ -74,7 +74,7 @@ inline void* arena_alloc(ArenaAllocator* arena, size_t size) {
     return result;
 }
 
-inline void* arena_realloc(ArenaAllocator* arena, void* ptr, size_t old_size, size_t new_size) {
+void* arena_realloc(ArenaAllocator* arena, void* ptr, size_t old_size, size_t new_size) {
     if (UNLIKELY(new_size <= old_size)) {
         return ptr;
     }
@@ -171,7 +171,7 @@ inline void* arena_realloc(ArenaAllocator* arena, void* ptr, size_t old_size, si
     return result;
 }
 
-inline void* arena_memset(void* ptr, int value, size_t len) {
+void* arena_memset(void* ptr, int value, size_t len) {
     char* p = (char*) ptr;
     char char_value = (char) value;
 
@@ -224,7 +224,7 @@ inline void* arena_memset(void* ptr, int value, size_t len) {
     return ptr;
 }
 
-inline void* arena_memcpy(void* dest, const void* src, size_t len) {
+void* arena_memcpy(void* dest, const void* src, size_t len) {
     char* d = dest;
     const char* s = src;
 
@@ -274,7 +274,7 @@ inline void* arena_memcpy(void* dest, const void* src, size_t len) {
     return dest;
 }
 
-inline char* arena_strdup(ArenaAllocator* arena, const char* str) {
+char* arena_strdup(ArenaAllocator* arena, const char* str) {
     size_t len = strlen(str);
     char* duplicate = (char*) arena_alloc(arena, len + 1);
 
@@ -291,7 +291,7 @@ inline void arena_reset(ArenaAllocator* arena) {
     arena -> end = arena -> start;
 }
 
-inline void arena_free(ArenaAllocator* arena) {
+void arena_free(ArenaAllocator* arena) {
     ArenaBlock* block = arena -> start;
 
     while (block != NULL) {

@@ -12,15 +12,15 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-static inline void new_err(const char* msg) {
-    printf("\e[1mError:\e[0m %s\n", msg);
+void new_err(const char* msg) {
+    printf("\033[1mError:\033[0m %s\n", msg);
     exit(1);
 }
 
 static inline void create_dir(const char* name) {
     size_t size = 32 + MAX_NAME_LEN;
     char cmd[size];
-    size_t offset = snprintf(cmd, size, "%s/src", name);
+    snprintf(cmd, size, "%s/src", name);
 
     make_dir(cmd);
 }

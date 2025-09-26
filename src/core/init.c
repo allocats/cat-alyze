@@ -12,12 +12,12 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-static inline void init_err(const char* msg) {
-    printf("\e[1mError:\e[0m %s\n", msg);
+void init_err(const char* msg) {
+    printf("\033[1mError:\033[0m %s\n", msg);
     exit(1);
 }
 
-static inline void create_dir() {
+static inline void create_dir(void) {
     make_dir("src");
 }
 
@@ -32,7 +32,7 @@ static inline void create_config(const char* name) {
     fclose(fptr);
 }
 
-static inline void create_main() {
+static inline void create_main(void) {
     FILE* fptr = fopen("src/main.c", "w");
     if (UNLIKELY(fptr == NULL)) {
         fclose(fptr);
@@ -44,7 +44,7 @@ static inline void create_main() {
     fclose(fptr);
 } 
 
-void init_project() {
+void init_project(void) {
     char cwd[MAX_NAME_LEN];
     getcwd(cwd, MAX_NAME_LEN);
 
