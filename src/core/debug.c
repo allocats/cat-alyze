@@ -45,7 +45,7 @@ static void build_debug_target(ArenaAllocator* arena, CatalyzeConfig* config, Ta
             size += strlen(all_flags[i]) + 1;
         }
 
-        char* object_file = source_to_object_name(arena, target -> sources[i]);
+        const char* object_file = source_to_object_name(arena, target -> sources[i]);
 
         size += strlen(target -> sources[i]) + 1;
         size += strlen(path_prefix) + 1;
@@ -59,7 +59,9 @@ static void build_debug_target(ArenaAllocator* arena, CatalyzeConfig* config, Ta
         size_t offset = snprintf(cmd, size, "%s", config -> compiler);
 
         for (uint8_t i = 0; i < flag_count; i++) {
-            offset += snprintf(cmd + offset, size - offset, " %s", all_flags[i]); 
+            const char* flag = all_flags[i];
+            if (flag[1] == 'L' || flag[1] == 'l') continue;
+            offset += snprintf(cmd + offset, size - offset, " %s", flag); 
         }
 
         offset += snprintf(cmd + offset, size - offset, " -c");

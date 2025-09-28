@@ -49,12 +49,12 @@ inline void make_dir(const char* dir) {
     }
 }
 
-inline char* source_to_object_name(ArenaAllocator* arena, const char* source_path) {
+inline const char* source_to_object_name(ArenaAllocator* arena, const char* source_path) {
     const char* name = strrchr(source_path, '/');
     name = name ? name + 1 : source_path;
 
     const char* ext = strrchr(name, '.');
-    size_t len = ext ? (size_t)(ext - name) : strlen(name);
+    const size_t len = (size_t)(ext - name);
 
     char* object_name = arena_alloc(arena, len + 3);
     strncpy(object_name, name, len);
@@ -83,16 +83,16 @@ void link_executable(CatalyzeConfig* config, const char* path_prefix, Target* bu
     char cmd[size];
     size_t offset = snprintf(cmd, size, "%s", config -> compiler);
 
-    for (uint8_t i = 0; i < flag_count; i++) {
-        offset += snprintf(cmd + offset, size - offset, " %s", all_flags[i]);
-    }
-
     for (uint8_t i = 0; i < build_target -> source_count; i++) {
         offset += snprintf(cmd + offset, size - offset, " %s%s%s", path_prefix, config -> build_dir, all_object_files[i]);
     }
 
     offset += snprintf(cmd + offset, size - offset, " -o");
     offset += snprintf(cmd + offset, size - offset, " %s%s/%s", path_prefix, build_target -> output_dir, build_target -> output_name);
+
+    for (uint8_t i = 0; i < flag_count; i++) {
+        offset += snprintf(cmd + offset, size - offset, " %s", all_flags[i]);
+    }
 
     if (UNLIKELY(system(cmd) != 0)) {
         build_err("compiler failed");
@@ -107,7 +107,7 @@ static void* compile_object(void* arg) {
         size += strlen(cmd -> all_flags[i]) + 1;
     }
 
-    char* object_file = source_to_object_name(cmd -> arena, cmd -> source);
+    const char* object_file = source_to_object_name(cmd -> arena, cmd -> source);
 
     size += strlen(cmd -> source) + 1;
     size += strlen(cmd -> path_prefix) + 1;
@@ -120,15 +120,20 @@ static void* compile_object(void* arg) {
 
     size_t offset = snprintf(compile_command, size, "%s", cmd -> compiler);
 
-    for (uint8_t i = 0; i < cmd -> flag_count; i++) {
-        offset += snprintf(compile_command + offset, size - offset, " %s", cmd -> all_flags[i]); 
-    }
-
     offset += snprintf(compile_command + offset, size - offset, " -c");
     offset += snprintf(compile_command + offset, size - offset, " %s%s", cmd -> path_prefix, cmd -> source);
 
     offset += snprintf(compile_command + offset, size - offset, " -o");
     offset += snprintf(compile_command + offset, size - offset, " %s%s%s", cmd -> path_prefix, cmd -> build_dir, object_file);
+
+    for (uint8_t i = 0; i < cmd -> flag_count; i++) {
+        const char* flag = cmd -> all_flags[i];
+        if (flag[1] == 'L' || flag[1] == 'l') {
+            continue;
+        }
+
+        offset += snprintf(compile_command + offset, size - offset, " %s", flag); 
+    }
 
     (*cmd -> all_object_files)[cmd -> idx] = arena_strdup(cmd -> arena, object_file);
 

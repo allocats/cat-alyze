@@ -13,7 +13,7 @@
 #include <unistd.h>
 
 void config_err(const char* msg) {
-    printf("\033[1mError in config.cat:\033[0m %s\n", msg);
+    printf("\033[1mError:\033[0m %s\n", msg);
     exit(1);
 }
 
