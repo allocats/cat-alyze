@@ -3,7 +3,7 @@
 rm -rvf build &>/dev/null
 mkdir -p build/bin &>/dev/null 
 
-CFLAGS="-Wall -Wextra -Werror -pedantic -O3 -flto -march=native"
+CFLAGS="-Wall -Wextra -Werror -pedantic -O3 -flto -march=native -static"
 
 clang $CFLAGS -c src/config/config.c -o build/config.o
 clang $CFLAGS -c src/config/lexer.c -o build/lexer.o
