@@ -5,7 +5,7 @@ mkdir -p build/bin &>/dev/null
 
 CFLAGS="-Wall -Wextra -Werror -pedantic -O3 -flto -march=native -static"
 
-clang $CFLAGS -c src/whisker/whisker_cmd.c -o build/whisker_cmd.o
+clang $CFLAGS -c whisker/cmd/whisker_cmd.c -o build/whisker_cmd.o
 clang $CFLAGS -c src/config/config.c -o build/config.o
 clang $CFLAGS -c src/config/lexer.c -o build/lexer.o
 clang $CFLAGS -c src/core/build.c -o build/build.o

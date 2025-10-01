@@ -3,7 +3,7 @@
 #include "../utils/macros.h"
 
 #define WHISKER_NOPREFIX
-#include "../whisker/whisker_cmd.h"
+#include "../../whisker/cmd/whisker_cmd.h"
 
 #include <errno.h>
 #include <limits.h>

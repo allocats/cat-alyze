@@ -5,7 +5,7 @@
 #include "../utils/arena.h"
 
 #define WHISKER_NOPREFIX
-#include "../whisker/whisker_cmd.h"
+#include "../../whisker/cmd/whisker_cmd.h"
 
 #include <stdint.h>
 #include <stdio.h>
