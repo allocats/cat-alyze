@@ -4,6 +4,9 @@
 
 #include "../utils/arena.h"
 
+#define WHISKER_NOPREFIX
+#include "../whisker/whisker_cmd.h"
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,8 +29,8 @@ void run_project_all(ArenaAllocator* arena, CatalyzeConfig* config) {
 
         if (target -> type != Executable) continue;
 
-        size_t size = 32 + strlen(target -> output_dir) + strlen(target -> output_name) + (3 * config -> nest_count);
-        char cmd[size];
+        Whisker_Cmd cmd = {0};
+
         char path_prefix[(3 * config -> nest_count) + 1];
         path_prefix[0] = '\0';
         
@@ -35,11 +38,18 @@ void run_project_all(ArenaAllocator* arena, CatalyzeConfig* config) {
             strcat(path_prefix, "../");
         }
 
-        snprintf(cmd, size, "./%s%s/%s", path_prefix, target -> output_dir, target -> output_name);
+        const size_t size = 16 + strlen(path_prefix) + strlen(target -> output_dir) + strlen(target -> output_name);
+        char temp[size];
+        snprintf(temp, size, "./%s%s/%s", path_prefix, target -> output_dir, target -> output_name);
 
-        if (system(cmd) != 0) {
+        cmd_append(&cmd, temp); 
+
+        if (!cmd_execute(&cmd)) {
+            cmd_destroy(&cmd);
             run_err("Run failed");
         }
+
+        cmd_destroy(&cmd);
     }
 }
 
@@ -59,8 +69,8 @@ void run_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const cha
 
     build_project_target(arena, config, target_name);
 
-    size_t size = 32 + strlen(target -> output_dir) + strlen(target -> output_name) + (3 * config -> nest_count);
-    char cmd[size];
+    Whisker_Cmd cmd = {0};
+
     char path_prefix[(3 * config -> nest_count) + 1];
     path_prefix[0] = '\0';
 
@@ -68,9 +78,16 @@ void run_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const cha
         strcat(path_prefix, "../");
     }
 
-    snprintf(cmd, size, "./%s%s/%s", path_prefix, target -> output_dir, target -> output_name);
+    const size_t size = 16 + strlen(path_prefix) + strlen(target -> output_dir) + strlen(target -> output_name);
+    char temp[size];
+    snprintf(temp, size, "./%s%s/%s", path_prefix, target -> output_dir, target -> output_name);
 
-    if (system(cmd) != 0) {
+    cmd_append(&cmd, temp); 
+
+    if (!cmd_execute(&cmd)) {
+        cmd_destroy(&cmd);
         run_err("Run failed");
     }
+
+    cmd_destroy(&cmd);
 }
