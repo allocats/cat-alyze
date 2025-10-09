@@ -26,28 +26,23 @@ typedef enum {
 } TargetType;
 
 typedef struct {
+    char** sources;
+    uint8_t source_count;
+    char* flags;
+    // uint8_t flag_count;
     TargetType type;
     char* name;
-    char** sources;
-    char** flags;
-
-    uint8_t source_count;
-    uint8_t flag_count;
-
     char* output_dir;
     char* output_name;
 } __attribute__((aligned(8))) Target;
 
 typedef struct {
-    uint8_t nest_count;
+    Target* targets; 
     uint8_t target_count;
-    Target** targets; 
-
     char* compiler;
-    char** default_flags;
-    uint8_t default_flag_count;
-
+    char* default_flags;
     char* build_dir;
+    uint8_t nest_count;
 } __attribute__((aligned(8))) CatalyzeConfig;
 
 void push_default_flag(ArenaAllocator* arena, CatalyzeConfig* config, char* start);

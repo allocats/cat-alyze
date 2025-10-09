@@ -144,8 +144,8 @@ void build_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const c
 
     Target* build_target = NULL;
     for (uint8_t i = 0; i < config -> target_count; i++) {
-        if (strcmp(target, config -> targets[i] -> name) == 0) {
-            build_target = config -> targets[i];
+        if (strcmp(target, config -> targets[i].name) == 0) {
+            build_target = &config -> targets[i];
             break;
         }
     }
