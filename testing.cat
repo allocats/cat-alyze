@@ -1,12 +1,12 @@
 config {
 	compiler: clang
 	build_dir: build/
-	default_flags: -Wall -Wextra
+	default_flags: [-Wall -Wextra]
 }
 
 target executable example {
-	sources: src/main.c
-	flags: -O3
+	sources: [src/main.c]
+	flags: [-O3]
 	output: build/bin/example
 }
 

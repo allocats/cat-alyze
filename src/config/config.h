@@ -39,8 +39,8 @@ typedef struct {
 } __attribute__((aligned(8))) Target;
 
 typedef struct {
-    uint8_t nest_count : 4;
-    uint8_t target_count : 4;
+    uint8_t nest_count;
+    uint8_t target_count;
     Target** targets; 
 
     char* compiler;
