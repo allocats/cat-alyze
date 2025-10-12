@@ -29,36 +29,36 @@ catalyze run myapp      # Run specific target
 
 ## Configuration
 
-Catalyze uses `.cat` configuration files
+Catalyze uses `.cat` configuration files, arrays are denoted by '[' and ']'
 
 ```
 config {
     compiler: clang
     build_dir: build/
-    default_flags: -Wall -Wextra
+    default_flags: [-Wall -Wextra]
 }
 
 target executable myapp {
-    sources: src/main.c
-    flags: -O3
+    sources: [src/main.c]
+    flags: [-O3]
     output: build/bin/myapp
 }
 
 target debug myapp_debug {
-	sources: src/main.c
-	flags: -O0 -g3 -fsanitize=address -Weverything
+	sources: [src/main.c]
+	flags: [-O0 -g3 -fsanitize=address -Weverything]
 	output: build/debug/myapp_debug
 }
 
 target test myapp_tests {
-    sources: tests/test_main.c
-    flags: -g -Weverything
+    sources: [tests/test_main.c]
+    flags: [-g -Weverything]
     output: build/test/myapp_tests
 }
 
 target static_lib myapp_lib {
-    sources: src/lib.c src/utils.c
-    flags: -fPIC
+    sources: [src/lib.c src/utils.c]
+    flags: [-fPIC]
     output: build/lib/libmylib.a
 }
 ```
@@ -110,19 +110,35 @@ catalyze help                  # Show help message
 config {
     compiler: gcc
     build_dir: build/
-    default_flags: -std=c99 -Wall
+    default_flags: [-std=c99 -Wall]
 }
 
 target executable hello {
-    sources: src/main.c
-    flags: -O2
+    sources: [src/main.c]
+    flags: [-O2]
     output: build/bin/hello
 }
 ```
 
-## Roadmap
+### Multiline support for arrays
+```
+target executable hello {
+    sources: [
+        src/foo.c
+        src/bar.c
+        src/baz.c
+        src/main.c
+    ]
+    flags: [
+        -O2
+        -march=native
+        -g
+    ]
+    output: build/bin/hello
+}
+```
 
-#### Planned
+#### Planned future work
 
 - Testing and a test framework
 - Static & Shared library target support
