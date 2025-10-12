@@ -1,9 +1,10 @@
 #include "build.h"
 
-#include "../utils/macros.h"
+// #define DEBUG_MODE
 
 #define WHISKER_NOPREFIX
 #include "../../whisker/cmd/whisker_cmd.h"
+#include "../utils/macros.h"
 
 #include <errno.h>
 #include <limits.h>
@@ -66,24 +67,24 @@ inline const char* source_to_object_name(ArenaAllocator* arena, const char* sour
     return object_name;
 }
 
-void link_executable(ArenaAllocator* arena, CatalyzeConfig* config, const char* path_prefix, Target* build_target, char** all_flags, uint8_t flag_count, char** all_object_files) {
+void link_executable(ArenaAllocator* arena, CatalyzeConfig config, const char* path_prefix, Target build_target, char** all_flags, uint8_t flag_count, char** all_object_files) {
     Whisker_Cmd cmd = {0};
 
-    cmd_append(&cmd, config -> compiler);
+    cmd_append(&cmd, config.compiler);
 
-    for (uint8_t i = 0; i < build_target -> source_count; i++) {
-        const size_t size = 16 + strlen(path_prefix) + strlen(config -> build_dir) + strlen(all_object_files[i]); 
+    for (uint8_t i = 0; i < build_target.source_count; i++) {
+        const size_t size = 16 + strlen(path_prefix) + strlen(config.build_dir) + strlen(all_object_files[i]); 
         char* obj_paths = arena_alloc(arena, size);
-        snprintf(obj_paths, size, "%s%s%s", path_prefix, config -> build_dir, all_object_files[i]);
+        snprintf(obj_paths, size, "%s%s%s", path_prefix, config.build_dir, all_object_files[i]);
 
         cmd_append(&cmd, obj_paths);
     }
 
     cmd_append(&cmd, "-o");
 
-    const size_t size = 16 + strlen(path_prefix) + strlen(build_target -> output_dir) + strlen(build_target -> output_name);
+    const size_t size = 16 + strlen(path_prefix) + strlen(build_target.output_dir) + strlen(build_target.output_name);
     char temp[size];
-    snprintf(temp, size, "%s%s/%s", path_prefix, build_target -> output_dir, build_target -> output_name);
+    snprintf(temp, size, "%s%s/%s", path_prefix, build_target.output_dir, build_target.output_name);
 
     cmd_append(&cmd, temp);
 
@@ -222,7 +223,7 @@ void build_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const c
         case Executable:
         case Debug:
         case Test:
-            link_executable(arena, config, path_prefix, build_target, all_flags, all_flag_count, all_object_files);
+            link_executable(arena, *config, path_prefix, *build_target, all_flags, all_flag_count, all_object_files);
             break;
 
         default:
@@ -303,7 +304,7 @@ void build_project_all(ArenaAllocator* arena, CatalyzeConfig* config) {
             case Executable:
             case Debug:
             case Test:
-                link_executable(arena, config, path_prefix, &build_target, all_flags, all_flag_count, all_object_files);
+                link_executable(arena, *config, path_prefix, build_target, all_flags, all_flag_count, all_object_files);
                 break;
 
             default:
