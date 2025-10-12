@@ -21,13 +21,9 @@ void run_project_all(ArenaAllocator* arena, CatalyzeConfig* config) {
     build_project_all(arena, config);
 
     for (uint8_t i = 0; i < config -> target_count; i++) {
-        Target* target = config -> targets[i];
+        Target target = config -> targets[i];
 
-        if (target == NULL) {
-            run_err("Invalid target found");
-        }
-
-        if (target -> type != Executable) continue;
+        if (target.type != Executable) continue;
 
         Whisker_Cmd cmd = {0};
 
@@ -38,9 +34,9 @@ void run_project_all(ArenaAllocator* arena, CatalyzeConfig* config) {
             strcat(path_prefix, "../");
         }
 
-        const size_t size = 16 + strlen(path_prefix) + strlen(target -> output_dir) + strlen(target -> output_name);
+        const size_t size = 16 + strlen(path_prefix) + strlen(target.output_dir) + strlen(target.output_name);
         char temp[size];
-        snprintf(temp, size, "./%s%s/%s", path_prefix, target -> output_dir, target -> output_name);
+        snprintf(temp, size, "./%s%s/%s", path_prefix, target.output_dir, target.output_name);
 
         cmd_append(&cmd, temp); 
 
@@ -57,8 +53,8 @@ void run_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const cha
     Target* target = NULL;
 
     for (uint8_t i = 0; i < config -> target_count; i++) {
-        if (strcmp(config -> targets[i] -> name, target_name) == 0) {
-            target = config -> targets[i];
+        if (strcmp(config -> targets[i].name, target_name) == 0) {
+            target = &config -> targets[i];
             break;
         }
     }

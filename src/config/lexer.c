@@ -1,99 +1,36 @@
 #include "lexer.h" 
 
 #include "config.h"
+#include "char_map.h"
 #include "../utils/macros.h"
+#include "config_hashes.h"
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#define IS_ALPHA(c) (char_map[(unsigned char)(c)] & 1)
-#define IS_WHITESPACE(c) (char_map[(unsigned char)(c)] & 2)
-#define IS_IDENTIFIER(c) (char_map[(unsigned char)(c)] & 4)
-#define IS_DELIM(c) (char_map[(unsigned char)(c)] & 8)
+static void parse_config_section(Lexer* lexer);
+static void parse_compiler(Lexer* lexer);
+static void parse_build_dir(Lexer* lexer);
+static void parse_default_flags(Lexer* lexer);
 
-static const uint8_t char_map[256] = {
-    ['0'] = 1,
-    ['1'] = 1,
-    ['2'] = 1,
-    ['3'] = 1,
-    ['4'] = 1,
-    ['5'] = 1,
-    ['6'] = 1,
-    ['7'] = 1,
-    ['8'] = 1,
-    ['9'] = 1,
+static void parse_target_type(Lexer* lexer);
+static void parse_target_name(Lexer* lexer);
+static void parse_sources(Lexer* lexer);
+static void parse_flags(Lexer* lexer);
+static void parse_output(Lexer* lexer);
 
-    ['a'] = 1,
-    ['b'] = 1,
-    ['c'] = 1,
-    ['d'] = 1,
-    ['e'] = 1,
-    ['f'] = 1,
-    ['g'] = 1,
-    ['h'] = 1,
-    ['i'] = 1,
-    ['j'] = 1,
-    ['k'] = 1,
-    ['l'] = 1,
-    ['m'] = 1,
-    ['n'] = 1,
-    ['o'] = 1,
-    ['p'] = 1,
-    ['q'] = 1,
-    ['r'] = 1,
-    ['s'] = 1,
-    ['t'] = 1,
-    ['u'] = 1,
-    ['v'] = 1,
-    ['w'] = 1,
-    ['x'] = 1,
-    ['y'] = 1,
-    ['z'] = 1,
-
-    ['A'] = 1,
-    ['B'] = 1,
-    ['C'] = 1,
-    ['D'] = 1,
-    ['E'] = 1,
-    ['F'] = 1,
-    ['G'] = 1,
-    ['H'] = 1,
-    ['I'] = 1,
-    ['J'] = 1,
-    ['K'] = 1,
-    ['L'] = 1,
-    ['M'] = 1,
-    ['N'] = 1,
-    ['O'] = 1,
-    ['P'] = 1,
-    ['Q'] = 1,
-    ['R'] = 1,
-    ['S'] = 1,
-    ['T'] = 1,
-    ['U'] = 1,
-    ['V'] = 1,
-    ['W'] = 1,
-    ['X'] = 1,
-    ['Y'] = 1,
-    ['Z'] = 1,
-
-    ['_'] = 1,
-    ['-'] = 1,
-    ['/'] = 1,
-    ['.'] = 1,
-    ['*'] = 1,
-    ['='] = 1,
-
-    [' '] = 2, 
-    ['\t'] = 2, 
-    ['\n'] = 2,
-
-    [':'] = 4,
-
-    ['{'] = 8,
-    ['}'] = 8,
+static const FieldHandler fields[] = {
+    { CONFIG_HASH, parse_config_section }, 
+    { COMPILER_HASH, parse_compiler },
+    { BUILD_DIR_HASH, parse_build_dir },
+    { DEFAULT_FLAGS_HASH, parse_default_flags },
+    { SOURCES_HASH, parse_sources },
+    { FLAGS_HASH, parse_flags },
+    { OUTPUT_HASH, parse_output },
+    { 0, NULL }
 };
 
 void lexer_err(Lexer* lexer, const char* msg) {
@@ -118,6 +55,14 @@ void lexer_err(Lexer* lexer, const char* msg) {
     exit(1);
 }
 
+static inline uint32_t djb2_hash(const char* s) {
+    uint32_t hash = 5381;
+    while (*s) {
+        hash = ((hash << 5) + hash) + *s++;
+    }
+    return hash;
+}
+ 
 static inline Lexer* create_lexer(ArenaAllocator* arena, CatalyzeConfig* config, char* buffer, const size_t size) {
     Lexer* lexer = arena_alloc(arena, sizeof(*lexer));
 
@@ -134,129 +79,395 @@ static inline void advance(Lexer* lexer) {
     lexer -> cursor = ++lexer -> cursor >= lexer -> end ? lexer -> end : lexer -> cursor;
 }
 
+#define ADVANCE_CURSOR(cursor, end) cursor = ++cursor >= end ? end : cursor; \
+    if (cursor == end) lexer_err(lexer, "Sudden eof!")
+
 static inline void skip_whitespace(Lexer* lexer) {
-    char** cursor = &lexer -> cursor;
-    while (IS_WHITESPACE(**cursor)) {
+    while (IS_WHITESPACE(*(lexer -> cursor))) {
         advance(lexer);
     } 
 }
 
-static inline void skip_spaces(Lexer* lexer) {
-    char** cursor = &lexer -> cursor;
-    while (IS_WHITESPACE(**cursor) && **cursor != '\n') {
-        advance(lexer);
-    } 
-}
-
-static inline void parse_single(Lexer* lexer, char** dest) {
-    char** cursor = &lexer -> cursor;
-    char* start = *cursor;
-    while (IS_ALPHA(**cursor)) {
-        advance(lexer);
+static void parse_config_section(Lexer* lexer) {
+    skip_whitespace(lexer);
+    char* cursor = lexer -> cursor;
+    char* end = lexer -> end;
+    
+    if (*cursor != '{') {
+        lexer_err(lexer, "Expected '{'!");
     }
 
-    (**cursor) = 0;
-    (*cursor)++;
+    ADVANCE_CURSOR(cursor, end);
+    lexer -> cursor = cursor;
+    skip_whitespace(lexer);
+    cursor = lexer -> cursor;
 
-    set_single(lexer -> arena, dest, start);
+    while (*cursor != '}') {
+        skip_whitespace(lexer);
+        cursor = lexer -> cursor;
+        if (*cursor == '}') {
+            *cursor = 0;
+            cursor++;
+            lexer -> cursor = cursor;
+            return;
+        }
+
+        char* start = cursor;
+        while (IS_ALPHA(*cursor)) {
+            ADVANCE_CURSOR(cursor, end);
+        }
+
+        *cursor = 0;
+        cursor++;
+
+        lexer -> cursor = cursor;
+
+        uint32_t hash = djb2_hash(start);
+        bool found = false;
+        for (const FieldHandler* field = fields; field -> hash != 0; field++) {
+            if (field -> hash == hash) {
+                field -> fn(lexer);
+                cursor = lexer -> cursor;
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            printf("Error: %s\n", start);
+            lexer_err(lexer, "Unknown field in config section");
+        }
+    }
+
+    cursor++;
+    lexer->cursor = cursor;
+}
+
+static void parse_compiler(Lexer* lexer) {
+    skip_whitespace(lexer);
+    char* cursor = lexer -> cursor;
+    char* start = cursor;
+    char* end = lexer -> end;
+
+    while (IS_ALPHA(*cursor)) {
+        ADVANCE_CURSOR(cursor, end);
+    }
+
+    *cursor = 0;
+    cursor++;
+
+    lexer -> config -> compiler = start;
+    lexer -> cursor = cursor;
+}
+
+static void parse_build_dir(Lexer* lexer) {
+    skip_whitespace(lexer);
+    char* cursor = lexer -> cursor;
+    char* start = cursor;
+    char* end = lexer -> end;
+
+    while (IS_ALPHA(*cursor)) {
+        ADVANCE_CURSOR(cursor, end);
+    }
+
+    *cursor = 0;
+    cursor++;
+
+    lexer -> config -> build_dir = start;
+    lexer -> cursor = cursor;
 }
 
 static void parse_default_flags(Lexer* lexer) {
-    char** cursor = &lexer -> cursor;
-    uint8_t i = 0;
+    skip_whitespace(lexer);
+    char* cursor = lexer -> cursor;
+    char* end = lexer -> end;
 
-    while (**cursor != '\n' && i < MAX_FLAGS) {
-        skip_spaces(lexer);
-        if (**cursor == '\n') break;
+    if (*cursor++ != '[') {
+        lexer_err(lexer, "Expected '['!");
+    }
 
-        char* flag_start = *cursor;
-        while (IS_ALPHA(**cursor)) {
-            advance(lexer);
+    char* start = cursor;
+    while (*cursor != ']') {
+        if (*cursor == 0) lexer_err(lexer, "Expected ']'!");
+        if (*cursor == '\t' || *cursor == '\n') *cursor = ' ';
+        ADVANCE_CURSOR(cursor, end);
+    }
+
+    *cursor = 0;
+    cursor++;
+    lexer -> cursor = cursor;
+
+    while (*start != 0) {
+        while (IS_WHITESPACE(*start)) {
+            start++;
         }
 
-        if (**cursor == '\n') {
-            (**cursor) = 0;
-            (*cursor)++;
-            push_default_flag(lexer -> arena, lexer -> config, flag_start);
-            break;
+        if (*start == 0) return;
+
+        char* flag_start = start;
+
+        while (IS_ALPHA(*start)) {
+            start++;
         }
 
-        (**cursor) = 0;
-        (*cursor)++;
+        if (*start == 0) {
+            lexer -> config -> default_flags[lexer -> config -> default_flag_count++] = flag_start;
+            return;
+        }
 
-        push_default_flag(lexer -> arena, lexer -> config, flag_start);
-        i++;
+        *start = 0;
+        start++;
+        lexer -> config -> default_flags[lexer -> config -> default_flag_count++] = flag_start;
     }
 }
 
-static void parse_target_flags(Lexer* lexer) {
-    char** cursor = &lexer -> cursor;
-    uint8_t count = 0;
+static void parse_target(Lexer* lexer) {
+    skip_whitespace(lexer);
+    char* cursor = lexer -> cursor;
+    char* start = cursor;
+    char* end = lexer -> end;
 
-    while (**cursor != '\n' && count < MAX_FLAGS) {
-        skip_spaces(lexer);
-        if (**cursor == '\n') break;
+    if (cursor >= end) return;
+    while (IS_ALPHA(*cursor)) {
+        ADVANCE_CURSOR(cursor, end);
+    }
 
-        char* flag_start = *cursor;
-        while (IS_ALPHA(**cursor)) {
-            advance(lexer);
+    *cursor = 0;
+    cursor++;
+
+    if (cursor >= end) return;
+
+    uint32_t hash = djb2_hash(start);
+    if (hash != TARGET_HASH) {
+        lexer_err(lexer, "Expected 'target'!");
+    }
+
+    lexer -> cursor = cursor;
+
+    parse_target_type(lexer);
+    parse_target_name(lexer);
+    skip_whitespace(lexer);
+
+    cursor = lexer -> cursor;
+    if (*cursor != '{') {
+        lexer_err(lexer, "Expected '{'!");
+    }
+
+    ADVANCE_CURSOR(cursor, end);
+    lexer -> cursor = cursor;
+    skip_whitespace(lexer);
+    cursor = lexer -> cursor;
+
+    while (*cursor != '}') {
+        skip_whitespace(lexer);
+        cursor = lexer -> cursor;
+        if (*cursor == '}') {
+            *cursor = 0;
+            cursor++;
+            lexer -> cursor = cursor;
+            lexer -> config -> target_count++;
+            return;
         }
 
-        if (**cursor == '\n') {
-            (**cursor) = 0;
-            (*cursor)++;
-            push_flag(lexer -> arena, lexer -> config, flag_start);
+        char* start = cursor;
+        while (IS_ALPHA(*cursor)) {
+            ADVANCE_CURSOR(cursor, end);
+        }
+
+        *cursor = 0;
+        cursor++;
+
+        lexer -> cursor = cursor;
+
+        uint32_t hash = djb2_hash(start);
+        bool found = false;
+        for (const FieldHandler* field = fields; field -> hash != 0; field++) {
+            if (field -> hash == hash) {
+                field -> fn(lexer);
+                cursor = lexer -> cursor;
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            printf("Error: %s\n", start);
+            lexer_err(lexer, "Unknown field in target");
+        }
+    }
+
+    cursor++;
+    lexer -> cursor = cursor;
+    lexer -> config -> target_count++;
+}
+
+static void parse_target_type(Lexer* lexer) {
+    skip_whitespace(lexer);
+    char* cursor = lexer -> cursor;
+    char* start = cursor;
+    char* end = lexer -> end;
+
+    while (IS_ALPHA(*cursor)) {
+        ADVANCE_CURSOR(cursor, end);
+    }
+
+    *cursor = 0;
+    cursor++;
+
+    uint32_t hash = djb2_hash(start);
+    Target* target = &lexer -> config -> targets[lexer -> config -> target_count];
+
+    switch (hash) {
+        case EXECUTABLE_HASH: {
+            target -> type = Executable;
             break;
         }
 
-        (**cursor) = 0;
-        (*cursor)++;
+        case DEBUG_HASH: {
+            target -> type = Debug;
+            break;
+        }
 
-        push_flag(lexer -> arena, lexer -> config, flag_start);
-        count++;
+        case TEST_HASH: {
+            target -> type = Test;
+            break;
+        }
+
+        default: {
+            lexer_err(lexer, "Unknown target type");
+        }
     }
+
+    lexer -> cursor = cursor;
+}
+
+static void parse_target_name(Lexer* lexer) {
+    skip_whitespace(lexer);
+    char* cursor = lexer -> cursor;
+    char* start = cursor;
+    char* end = lexer -> end;
+
+    while (IS_ALPHA(*cursor)) {
+        ADVANCE_CURSOR(cursor, end);
+    }
+
+    *cursor = 0;
+    cursor++;
+
+    Target* target = &lexer -> config -> targets[lexer -> config -> target_count];
+    target -> name = start;
+    lexer -> cursor = cursor;
 }
 
 static void parse_sources(Lexer* lexer) {
-    char** cursor = &lexer -> cursor;
-    uint8_t count = 0;
+    Target* target = &lexer -> config -> targets[lexer -> config -> target_count];
+    target -> source_count = 0;
 
-    while (**cursor != '\n' && count < MAX_SOURCES) {
-        skip_spaces(lexer);
-        if (**cursor == '\n') break;
+    skip_whitespace(lexer);
+    char* cursor = lexer -> cursor;
+    char* end = lexer -> end;
 
-        char* source_start = *cursor;
-        while (IS_ALPHA(**cursor)) {
-            advance(lexer);
+    if (*cursor++ != '[') {
+        lexer_err(lexer, "Expected '['!");
+    }
+
+    char* start = cursor;
+    while (*cursor != ']') {
+        if (*cursor == 0) lexer_err(lexer, "Expected ']'!");
+        if (*cursor == '\t' || *cursor == '\n') *cursor = ' ';
+        ADVANCE_CURSOR(cursor, end);
+    }
+
+
+    *cursor = 0;
+    cursor++;
+    lexer -> cursor = cursor;
+
+    while (*start != 0) {
+        while (IS_WHITESPACE(*start)) {
+            start++;
         }
 
-        if (**cursor == '\n') {
-            (**cursor) = 0;
-            (*cursor)++;
-            push_source(lexer -> arena, lexer -> config, source_start);
-            break;
+        if (*start == 0) return;
+
+        char* source_start = start;
+
+        while (IS_ALPHA(*start)) {
+            start++;
         }
 
-        (**cursor) = 0;
-        (*cursor)++;
+        if (*start == 0) {
+            target -> sources[target -> source_count++] = source_start;
+            return;
+        }
 
-        push_source(lexer -> arena, lexer -> config, source_start);
-        count++;
+        *start = 0;
+        start++;
+        target -> sources[target -> source_count++] = source_start;
     }
 }
 
-static void parse_target_output(Lexer* lexer) {
-    char** cursor = &lexer -> cursor;
-    char* start = *cursor;
-    while (IS_ALPHA(**cursor)) {
-        advance(lexer);
+static void parse_flags(Lexer* lexer) {
+    skip_whitespace(lexer);
+    char* cursor = lexer -> cursor;
+    char* end = lexer -> end;
+
+    if (*cursor++ != '[') {
+        lexer_err(lexer, "Expected '['!");
     }
 
-    char* end = *cursor;
+    char* start = cursor;
+    while (*cursor != ']') {
+        if (*cursor == 0) lexer_err(lexer, "Expected ']'!");
+        if (*cursor == '\t' || *cursor == '\n') *cursor = ' ';
+        ADVANCE_CURSOR(cursor, end);
+    }
+
+    *cursor = 0;
+    cursor++;
+    lexer -> cursor = cursor;
+
+    Target* target = &lexer -> config -> targets[lexer -> config -> target_count];
+
+    while (*start != 0) {
+        while (IS_WHITESPACE(*start)) {
+            start++;
+        }
+
+        if (*start == 0) return;
+
+        char* flag_start = start;
+
+        while (IS_ALPHA(*start)) {
+            start++;
+        }
+
+        if (*start == 0) {
+            target -> flags[target -> flag_count++] = flag_start;
+            return;
+        }
+
+        *start = 0;
+        start++;
+        target -> flags[target -> flag_count++] = flag_start;
+    }
+}
+
+static void parse_output(Lexer* lexer) {
+    skip_whitespace(lexer);
+    char* cursor = lexer -> cursor;
+    char* start = cursor;
+    char* buffer_end = lexer -> end;
+
+    while (IS_ALPHA(*cursor)) {
+        ADVANCE_CURSOR(cursor, buffer_end);
+    }
+
+    char* end = cursor;
     char* current = end;
 
-    if (UNLIKELY(current == start)) {
-        lexer_err(lexer, "Invalid output");
+    if (UNLIKELY(start == end)) {
+        lexer_err(lexer, "Invalid target output path");
     }
 
     while (*(current - 1) != '/') {
@@ -266,213 +477,19 @@ static void parse_target_output(Lexer* lexer) {
         current--;
     }
 
-    *cursor = current;
-    (*cursor)--;
-    (**cursor) = 0;
+    cursor = current;
+    cursor--;
+    *cursor = 0;
 
-    *cursor = end;
-    (**cursor) = 0;
-    (*cursor)++;
+    cursor = end;
+    *cursor = 0;
+    cursor++;
 
-    set_output_name(lexer -> arena, lexer -> config, current);
-    set_output_dir(lexer -> arena, lexer -> config, start);
-}
+    Target* target = &lexer -> config -> targets[lexer -> config -> target_count];
+    target -> output_dir = start;
+    target -> output_name = current; 
 
-static void match_options(Lexer* lexer, const char* start) {
-    advance(lexer);
-    skip_whitespace(lexer);
-
-    switch (start[0]) {
-        case 'b':
-            if (strcmp(start, "build_dir") == 0) {
-                parse_single(lexer, &lexer -> config -> build_dir);
-                return;
-            }
-            break;
-
-        case 'c':
-            if (strcmp(start, "compiler") == 0) {
-                parse_single(lexer, &lexer -> config -> compiler); 
-                return;
-            }
-            break;
-
-        case 'd':
-            if (strcmp(start, "default_flags") == 0) {
-                parse_default_flags(lexer);
-                return;
-            }
-            break;
-
-        case 'f':
-            if (strcmp(start, "flags") == 0) {
-                parse_target_flags(lexer);
-                return;
-            }
-            break;
-
-        case 'o':
-            if (strcmp(start, "output") == 0) {
-                parse_target_output(lexer);
-                return;
-            }
-            break;
-
-        case 's':
-            if (strcmp(start, "sources") == 0) {
-                parse_sources(lexer);
-                return;
-            }
-            break;
-    }
-
-    lexer_err(lexer, "Unknown option");
-}
-
-static inline void parse_key(Lexer* lexer) {
-    char** cursor = &lexer -> cursor;
-    skip_whitespace(lexer);
-
-    if (**cursor == '}') {
-        return;
-    }
-
-    const char* start = *cursor;
-    while (IS_ALPHA(**cursor)) {
-        advance(lexer);
-    }
-
-    (**cursor) = 0;
-    (*cursor)++;
-
-    match_options(lexer, start);
-}
-
-static inline void expect_keyword(Lexer* lexer, const char* keyword) {
-    char** cursor = &lexer -> cursor;
-    const char* start = *cursor;
-    while (IS_ALPHA(**cursor)) {
-        advance(lexer);
-    }
-
-    size_t len = *cursor - start;
-    if (len != strlen(keyword) || strncmp(start, keyword, len) != 0) {
-        char msg[64];
-        snprintf(msg, sizeof(msg), "Expected: %s", keyword);
-        lexer_err(lexer, msg);
-    }
-}
-
-static inline void expect_char(Lexer* lexer, const char expected) {
-    char** cursor = &lexer -> cursor;
-
-    if (**cursor != expected) {
-        char msg[16];
-        snprintf(msg, sizeof(msg), "Expected: %c", expected);
-        lexer_err(lexer, msg);
-    }
-
-    advance(lexer);
-}
-
-static inline void parse_identifier(Lexer* lexer, char** dest) {
-    char** cursor = &lexer -> cursor;
-    char* start = *cursor;
-
-    while (IS_ALPHA(**cursor)) {
-        advance(lexer);
-    }
-
-    (**cursor) = 0;
-    (*cursor)++;
-
-    set_single(lexer -> arena, dest, start);
-}
-
-static inline void parse_config_section(Lexer* lexer) {
-    char** cursor = &lexer -> cursor;
-
-    expect_keyword(lexer, "config");
-    skip_whitespace(lexer);
-
-    expect_char(lexer, '{');
-
-    skip_whitespace(lexer);
-    while (**cursor != '}') {
-        parse_key(lexer);
-        skip_whitespace(lexer);
-    }
-
-    advance(lexer);
-}
-
-static void parse_target_section(Lexer* lexer) {
-    char** cursor = &lexer -> cursor;
-
-    expect_keyword(lexer, "target");
-    skip_whitespace(lexer);
-
-    char* start = *cursor;
-
-    while (IS_ALPHA(**cursor)) {
-        advance(lexer);
-    }
-
-    (**cursor) = 0;
-    (*cursor)++;
-
-    switch (*start) {
-        case 'e':
-            if (strcmp(start, "executable") == 0) {
-                set_type(lexer -> arena, lexer -> config, Executable);
-                break;
-            }
-            lexer_err(lexer, "uknown target type");
-
-        case 't':
-            if (strcmp(start, "test") == 0) {
-                set_type(lexer -> arena, lexer -> config, Test);
-                break;
-            }
-            lexer_err(lexer, "uknown target type");
-
-        case 'd':
-            if (strcmp(start, "debug") == 0) {
-                set_type(lexer -> arena, lexer -> config, Debug);
-                break;
-            }
-            lexer_err(lexer, "uknown target type");
-
-        case 's':
-            if (strcmp(start, "static_lib") == 0) {
-                set_type(lexer -> arena, lexer -> config, StaticLib);
-                break;
-            } else if (strcmp(start, "shared_lib") == 0) {
-                set_type(lexer -> arena, lexer -> config, SharedLib);
-                break;
-            }
-            lexer_err(lexer, "uknown target type");
-
-        default:
-            lexer_err(lexer, "Uknown target type");
-    }
-
-    skip_whitespace(lexer);
-
-    Target* target = lexer -> config -> targets[lexer -> config -> target_count];
-    parse_identifier(lexer, &target -> name);
-
-    skip_whitespace(lexer);
-    expect_char(lexer, '{');
-    skip_whitespace(lexer);
-
-    while (**cursor != '}') {
-        parse_key(lexer);
-        skip_whitespace(lexer);
-    }
-
-    advance(lexer);
-    lexer -> config -> target_count++;
+    lexer -> cursor = cursor;
 }
 
 CatalyzeConfig* lexer_parse(ArenaAllocator* arena, char* buffer, const size_t size, const uint8_t nest_count) {
@@ -480,25 +497,35 @@ CatalyzeConfig* lexer_parse(ArenaAllocator* arena, char* buffer, const size_t si
     arena_memset(config, 0, sizeof(*config));
 
     Lexer* lexer = create_lexer(arena, config, buffer, size);
-
-    config -> target_count = 0;
-    config -> default_flag_count = 0;
-    config -> nest_count = nest_count;
+    lexer -> config -> target_count = 0;
+    lexer -> config -> nest_count = nest_count;
 
     skip_whitespace(lexer);
+
+    char* cursor = lexer -> cursor;
+    char* start = cursor;
+    char* end = lexer -> end;
+
+    while (IS_ALPHA(*cursor)) {
+        ADVANCE_CURSOR(cursor, end);
+    }
+
+    *cursor = 0;
+    cursor++;
+    lexer -> cursor = cursor;
+
+    uint32_t hash = djb2_hash(start);
+    if (hash != CONFIG_HASH) lexer_err(lexer, "Expected config section!"); 
+
     parse_config_section(lexer);
-
-    char** cursor = &lexer -> cursor;
     skip_whitespace(lexer);
 
-    while (**cursor == 't' && lexer -> config -> target_count < MAX_TARGETS) {
-        parse_target_section(lexer);
+    while (lexer -> cursor < lexer -> end) {
         skip_whitespace(lexer);
+        if (lexer -> cursor >= lexer -> end) break;
+
+        parse_target(lexer);
     }
 
-    if (UNLIKELY(lexer -> config -> target_count == 0)) {
-        lexer_err(lexer, "At least one target is required");
-    }
-
-    return lexer -> config;
+    return config;
 }

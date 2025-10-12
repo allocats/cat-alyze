@@ -3,7 +3,7 @@
 rm -rvf build &>/dev/null
 mkdir -p build/bin &>/dev/null 
 
-CFLAGS="-Wall -Wextra -Werror -pedantic -O3 -flto -march=native -static"
+CFLAGS="-Wall -Wextra -O3 -flto -march=native -g"
 
 clang $CFLAGS -c whisker/cmd/whisker_cmd.c -o build/whisker_cmd.o
 clang $CFLAGS -c src/config/config.c -o build/config.o
