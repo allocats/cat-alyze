@@ -95,6 +95,10 @@ void link_executable(ArenaAllocator* arena, CatalyzeConfig* config, const char* 
         build_err("Failed to compile");
     }
 
+#ifdef DEBUG_MODE
+    cmd_print(&cmd);
+#endif
+
     cmd_destroy(&cmd);
 }
 
@@ -121,12 +125,7 @@ static void* compile_object(void* args) {
     cmd_append(&cmd, build);
 
     for (uint8_t i = 0; i < arg -> flag_count; i++) {
-        const char* flag = arg -> all_flags[i];
-        if (flag[1] == 'L' || flag[1] == 'l') {
-            continue;
-        }
-
-        cmd_append(&cmd, flag);
+        cmd_append(&cmd, arg -> all_flags[i]);
     }
 
     (*arg -> all_object_files)[arg -> idx] = arena_strdup(arg -> arena, object_file);
@@ -134,6 +133,10 @@ static void* compile_object(void* args) {
     if (!cmd_execute(&cmd)) {
         build_err("Failed to compile");
     }
+
+#ifdef DEBUG_MODE
+    cmd_print(&cmd);
+#endif
 
     cmd_destroy(&cmd);
     return NULL;
@@ -163,16 +166,27 @@ void build_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const c
         strcat(path_prefix, "../");
     }
 
-    char** all_flags = arena_array(arena, char*, (config -> default_flag_count + build_target -> flag_count));
-    uint8_t flag_count = config -> default_flag_count + build_target -> flag_count;
+    size_t default_flags_size = sizeof(char*) * config -> default_flag_count;
+    size_t target_flags_size = sizeof(char*) * build_target -> flag_count;
+    size_t all_flag_count = build_target -> flag_count + config -> default_flag_count;
 
-    if (config -> default_flag_count > 0) {
-        arena_memcpy(all_flags, config -> default_flags, config -> default_flag_count * sizeof(char*));
+    char** all_flags = arena_alloc(arena, default_flags_size + target_flags_size);
+    arena_memcpy(all_flags, config -> default_flags, default_flags_size);
+    arena_memcpy(all_flags + config -> default_flag_count, build_target -> flags, target_flags_size);
+
+#ifdef DEBUG_MODE
+    printf("DEBUG: Default flags (%d:%zuB)\n", config -> default_flag_count, default_flags_size);
+    for (uint8_t i = 0; i < config -> default_flag_count; i++) {
+        printf("%s\n", config -> default_flags[i]);
     }
 
-    if (build_target -> flag_count > 0) {
-        arena_memcpy(all_flags + config -> default_flag_count, build_target -> flags, build_target-> flag_count * sizeof(char*));
+    printf("\nDEBUG: Target flags (%d:%zuB)\n", build_target -> flag_count, target_flags_size);
+    for (uint8_t i = 0; i < build_target -> flag_count; i++) {
+        printf("%s\n", build_target -> flags[i]);
     }
+
+    printf("\n");
+#endif /* ifdef DEBUG_MODE */
 
     char** all_object_files = arena_array(arena, char*, build_target -> source_count);
 
@@ -187,7 +201,7 @@ void build_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const c
 
             arg -> all_object_files = &all_object_files;
             arg -> all_flags = all_flags;
-            arg -> flag_count = flag_count;
+            arg -> flag_count = all_flag_count;
             arg -> compiler = config -> compiler;
             arg -> arena = arena;
             arg -> source = build_target -> sources[idx];
@@ -208,7 +222,7 @@ void build_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const c
         case Executable:
         case Debug:
         case Test:
-            link_executable(arena, config, path_prefix, build_target, all_flags, flag_count, all_object_files);
+            link_executable(arena, config, path_prefix, build_target, all_flags, all_flag_count, all_object_files);
             break;
 
         default:
@@ -220,15 +234,11 @@ void build_project_all(ArenaAllocator* arena, CatalyzeConfig* config) {
     make_dir(config -> build_dir);
 
     for (uint8_t current_target = 0; current_target < config -> target_count; current_target++) {
-        Target* build_target = config -> targets[current_target];
+        Target build_target = config -> targets[current_target];
 
-        if (build_target == NULL) {
-            build_err("Target not found");
-        }
+        if (build_target.type != Executable) continue;
 
-        if (build_target -> type != Executable) continue;
-
-        make_dir(build_target -> output_dir);
+        make_dir(build_target.output_dir);
 
         char* path_prefix = arena_alloc(arena, (config -> nest_count * 3) + 1);
         path_prefix[0] = '\0';
@@ -237,34 +247,45 @@ void build_project_all(ArenaAllocator* arena, CatalyzeConfig* config) {
             strcat(path_prefix, "../");
         }
 
-        char** all_flags = arena_array(arena, char*, (config -> default_flag_count + build_target -> flag_count));
-        uint8_t flag_count = config -> default_flag_count + build_target -> flag_count;
+        size_t default_flags_size = sizeof(char*) * config -> default_flag_count;
+        size_t target_flags_size = sizeof(char*) * build_target.flag_count;
+        size_t all_flag_count = build_target.flag_count + config -> default_flag_count;
 
-        if (config -> default_flag_count > 0) {
-            arena_memcpy(all_flags, config -> default_flags, config -> default_flag_count * sizeof(char*));
+        char** all_flags = arena_alloc(arena, default_flags_size + target_flags_size);
+        arena_memcpy(all_flags, config -> default_flags, default_flags_size);
+        arena_memcpy(all_flags + config -> default_flag_count, build_target.flags, target_flags_size);
+
+#ifdef DEBUG_MODE
+        printf("DEBUG: Default flags (%d:%zuB)\n", config -> default_flag_count, default_flags_size);
+        for (uint8_t i = 0; i < config -> default_flag_count; i++) {
+            printf("%s\n", config -> default_flags[i]);
         }
 
-        if (build_target -> flag_count > 0) {
-            arena_memcpy(all_flags + config -> default_flag_count, build_target -> flags, build_target-> flag_count * sizeof(char*));
+        printf("\nDEBUG: Target flags (%d:%zuB)\n", build_target.flag_count, target_flags_size);
+        for (uint8_t i = 0; i < build_target.flag_count; i++) {
+            printf("%s\n", build_target.flags[i]);
         }
 
-        char** all_object_files = arena_array(arena, char*, build_target -> source_count);
+        printf("\n");
+#endif /* ifdef DEBUG_MODE */
+
+        char** all_object_files = arena_array(arena, char*, build_target.source_count);
 
         int idx = 0;
         pthread_t threads[MAX_THREADS];
 
-        while (idx < build_target -> source_count) {
-            int batch_size = (build_target->source_count - idx > MAX_THREADS) ? MAX_THREADS : (build_target->source_count - idx);
+        while (idx < build_target.source_count) {
+            int batch_size = (build_target.source_count - idx > MAX_THREADS) ? MAX_THREADS : (build_target.source_count - idx);
 
             for (int i = 0; i < batch_size; i++) {
                 Arg* arg = arena_alloc(arena, sizeof(*arg));
 
                 arg -> all_object_files = &all_object_files;
                 arg -> all_flags = all_flags;
-                arg -> flag_count = flag_count;
+                arg -> flag_count = all_flag_count;
                 arg -> compiler = config -> compiler;
                 arg -> arena = arena;
-                arg -> source = build_target -> sources[idx];
+                arg -> source = build_target.sources[idx];
                 arg -> build_dir = config -> build_dir;
                 arg -> path_prefix = path_prefix;
                 arg -> idx = idx;
@@ -278,11 +299,11 @@ void build_project_all(ArenaAllocator* arena, CatalyzeConfig* config) {
             }
         }
 
-        switch (build_target -> type) {
+        switch (build_target.type) {
             case Executable:
             case Debug:
             case Test:
-                link_executable(arena, config, path_prefix, build_target, all_flags, flag_count, all_object_files);
+                link_executable(arena, config, path_prefix, &build_target, all_flags, all_flag_count, all_object_files);
                 break;
 
             default:

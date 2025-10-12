@@ -26,10 +26,10 @@ typedef enum {
 } TargetType;
 
 typedef struct {
-    char** sources;
+    char* sources[MAX_SOURCES];
     uint8_t source_count;
-    char* flags;
-    // uint8_t flag_count;
+    char* flags[MAX_FLAGS];
+    uint8_t flag_count;
     TargetType type;
     char* name;
     char* output_dir;
@@ -37,10 +37,11 @@ typedef struct {
 } __attribute__((aligned(8))) Target;
 
 typedef struct {
-    Target* targets; 
+    Target targets[MAX_TARGETS]; 
     uint8_t target_count;
     char* compiler;
-    char* default_flags;
+    char* default_flags[MAX_FLAGS];
+    uint8_t default_flag_count;
     char* build_dir;
     uint8_t nest_count;
 } __attribute__((aligned(8))) CatalyzeConfig;
@@ -60,5 +61,7 @@ void set_output_dir(ArenaAllocator* arena, CatalyzeConfig* config, char* start);
 void set_output_name(ArenaAllocator* arena, CatalyzeConfig* config, char* start);
 
 CatalyzeConfig* parse_config(ArenaAllocator* arena);
+
+void print_catalyze_config(const CatalyzeConfig* config);
 
 #endif // !CONFIG_H

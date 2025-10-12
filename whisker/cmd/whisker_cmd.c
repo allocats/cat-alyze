@@ -66,3 +66,14 @@ void whisker_cmd_destroy(Whisker_Cmd* cmd) {
     cmd -> count = 0;
     cmd -> capacity= 0;
 }
+
+void whisker_cmd_print(Whisker_Cmd* cmd) {
+    printf("CMD:");
+
+    size_t count = cmd -> count - 1; // subtract 1 as the final arg has to be null for exevp()
+    for (size_t i = 0; i < count; i++) {
+        printf(" %s", cmd -> items[i]);
+    } 
+
+    printf("\n");
+}

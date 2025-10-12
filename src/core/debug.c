@@ -48,9 +48,9 @@ void debug_all(ArenaAllocator* arena, CatalyzeConfig* config) {
     uint8_t count = 0;
 
     for (uint8_t i = 0; i < config -> target_count; i++) {
-        Target* target  = config -> targets[i];
-        if (target -> type == Debug) {
-            run_debug_target(arena, config, target -> name, target -> output_dir, target -> output_name);
+        Target target  = config -> targets[i];
+        if (target.type == Debug) {
+            run_debug_target(arena, config, target.name, target.output_dir, target.output_name);
             count++;
         }
     }
@@ -62,11 +62,11 @@ void debug_all(ArenaAllocator* arena, CatalyzeConfig* config) {
 
 void debug_target(ArenaAllocator* arena, CatalyzeConfig* config, const char* name) {
     for (uint8_t i = 0; i < config -> target_count; i++) {
-        Target* target  = config -> targets[i];
-        if (target -> type != Debug && strcmp(target -> name, name) == 0) {
+        Target target  = config -> targets[i];
+        if (target.type != Debug && strcmp(target.name, name) == 0) {
             debug_err("Target is not of debug type");
-        } else if (target -> type != Debug && strcmp(target -> name, name) == 0) {
-            run_debug_target(arena, config, target -> name, target -> output_dir, target -> output_name);
+        } else if (target.type != Debug && strcmp(target.name, name) == 0) {
+            run_debug_target(arena, config, target.name, target.output_dir, target.output_name);
         }
     }
 
