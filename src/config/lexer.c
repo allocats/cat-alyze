@@ -492,13 +492,14 @@ static void parse_output(Lexer* lexer) {
     lexer -> cursor = cursor;
 }
 
-CatalyzeConfig* lexer_parse(ArenaAllocator* arena, char* buffer, const size_t size, const uint8_t nest_count) {
+CatalyzeConfig* lexer_parse(ArenaAllocator* arena, char* buffer, const size_t size, const char* prefix, size_t prefix_len) {
     CatalyzeConfig* config = arena_alloc(arena, sizeof(*config));
-    arena_memset(config, 0, sizeof(*config));
+    memset(config, 0, sizeof(*config));
 
     Lexer* lexer = create_lexer(arena, config, buffer, size);
     lexer -> config -> target_count = 0;
-    lexer -> config -> nest_count = nest_count;
+    lexer -> config -> prefix = prefix;
+    lexer -> config -> prefix_len = prefix_len;
 
     skip_whitespace(lexer);
 

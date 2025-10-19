@@ -21,6 +21,6 @@ typedef struct {
     HandlerFunc fn;
 } FieldHandler;
 
-CatalyzeConfig* lexer_parse(ArenaAllocator* arena, char* buffer, const size_t size, const uint8_t nest_count);
+CatalyzeConfig* lexer_parse(ArenaAllocator* arena, char* buffer, const size_t size, const char* prefix, size_t path_len);
 
 #endif // !LEXER_H

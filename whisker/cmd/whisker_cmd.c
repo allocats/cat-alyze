@@ -39,7 +39,7 @@ bool whisker_cmd_execute(Whisker_Cmd* cmd) {
         }
     }
 
-    pid_t pid = fork();
+    pid_t pid = vfork();
     if (pid < 0) {
         return false;
     }

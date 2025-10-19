@@ -27,14 +27,9 @@ void run_project_all(ArenaAllocator* arena, CatalyzeConfig* config) {
 
         Whisker_Cmd cmd = {0};
 
-        char path_prefix[(3 * config -> nest_count) + 1];
-        path_prefix[0] = '\0';
-        
-        for (uint8_t i = 0; i < config -> nest_count; i++) {
-            strcat(path_prefix, "../");
-        }
+        const char* path_prefix = config -> prefix;
+        const size_t size = 16 + config -> prefix_len + strlen(target.output_dir) + strlen(target.output_name);
 
-        const size_t size = 16 + strlen(path_prefix) + strlen(target.output_dir) + strlen(target.output_name);
         char temp[size];
         snprintf(temp, size, "./%s%s/%s", path_prefix, target.output_dir, target.output_name);
 
@@ -67,14 +62,9 @@ void run_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const cha
 
     Whisker_Cmd cmd = {0};
 
-    char path_prefix[(3 * config -> nest_count) + 1];
-    path_prefix[0] = '\0';
+    const char* path_prefix = config -> prefix;
+    const size_t size = 16 + config -> prefix_len + strlen(target -> output_dir) + strlen(target -> output_name);
 
-    for (uint8_t i = 0; i < config -> nest_count; i++) {
-        strcat(path_prefix, "../");
-    }
-
-    const size_t size = 16 + strlen(path_prefix) + strlen(target -> output_dir) + strlen(target -> output_name);
     char temp[size];
     snprintf(temp, size, "./%s%s/%s", path_prefix, target -> output_dir, target -> output_name);
 
