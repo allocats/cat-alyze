@@ -122,11 +122,12 @@ static int handle_test(int argc, char* argv[]) {
     // TODO: Testing lol
     
     CatalyzeConfig* config = parse_config(&arena);
-    if (argc == 2) {
-        run_project_all(&arena, config);
-    } else {
-        run_project_target(&arena, config, argv[2]);
-    }
+    print_catalyze_config(config);
+    // if (argc == 2) {
+    //     run_project_all(&arena, config);
+    // } else {
+    //     run_project_target(&arena, config, argv[2]);
+    // }
 
     return 0;
 }
@@ -158,7 +159,7 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
 
-    init_arena(&arena, 4096 / sizeof(uintptr_t));
+    init_arena(&arena, 4096);
 
     int result = cmd -> handler(argc, argv);
     exit(result);

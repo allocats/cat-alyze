@@ -38,13 +38,19 @@ typedef struct {
 
 typedef struct {
     Target targets[MAX_TARGETS]; 
-    uint8_t target_count;
-    char* compiler;
+    const char* prefix;
+    size_t prefix_len;
     char* default_flags[MAX_FLAGS];
     uint8_t default_flag_count;
+    uint8_t target_count;
+    char* compiler;
     char* build_dir;
-    uint8_t nest_count;
 } __attribute__((aligned(8))) CatalyzeConfig;
+
+typedef struct {
+    const char* path;
+    size_t len;
+} PathMap;
 
 void push_default_flag(ArenaAllocator* arena, CatalyzeConfig* config, char* start);
 void push_flag(ArenaAllocator* arena, CatalyzeConfig* config, char* start);

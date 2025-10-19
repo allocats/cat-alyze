@@ -23,14 +23,9 @@ static void run_debug_target(ArenaAllocator* arena, CatalyzeConfig* config, cons
 
     Whisker_Cmd cmd = {0};
 
-    char path_prefix[(3 * config -> nest_count) + 1];
-    path_prefix[0] = '\0';
+    const char* path_prefix = config -> prefix;
 
-    for (uint8_t i = 0; i < config -> nest_count; i++) {
-        strcat(path_prefix, "../");
-    }
-
-    const size_t size = 16 + strlen(path_prefix) + strlen(dir) + strlen(file);
+    const size_t size = 16 + config -> prefix_len + strlen(dir) + strlen(file);
     char temp[size];
 
     snprintf(temp, size, "./%s/%s/%s", path_prefix, dir, name);

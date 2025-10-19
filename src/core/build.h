@@ -9,14 +9,14 @@
 
 typedef struct {
     ArenaAllocator* arena;
-    char* compiler;
     char** all_flags;
     uint8_t flag_count;
     char* source;
-    char* path_prefix;
+    const char* path_prefix;
+    size_t prefix_len;
     char* build_dir;
-    char*** all_object_files;
-    uint8_t idx;
+    const char* object_file;
+    char* compiler;
 } Arg;
 
 void build_project_target(ArenaAllocator* arena, CatalyzeConfig* config, const char* target);
