@@ -80,7 +80,7 @@ static inline void advance(Lexer* lexer) {
 }
 
 #define ADVANCE_CURSOR(cursor, end) cursor = ++cursor >= end ? end : cursor; \
-    if (cursor == end) lexer_err(lexer, "Sudden eof!")
+    if (UNLIKELY(cursor == end)) lexer_err(lexer, "Sudden eof!")
 
 static inline void skip_whitespace(Lexer* lexer) {
     while (IS_WHITESPACE(*(lexer -> cursor))) {
@@ -182,42 +182,50 @@ static void parse_default_flags(Lexer* lexer) {
     char* cursor = lexer -> cursor;
     char* end = lexer -> end;
 
-    if (*cursor++ != '[') {
+    if (UNLIKELY(*cursor++ != '[')) {
         lexer_err(lexer, "Expected '['!");
     }
 
-    char* start = cursor;
-    while (*cursor != ']') {
-        if (*cursor == 0) lexer_err(lexer, "Expected ']'!");
-        if (*cursor == '\t' || *cursor == '\n') *cursor = ' ';
-        ADVANCE_CURSOR(cursor, end);
+    if (UNLIKELY(*cursor == ']')) {
+        lexer -> config -> default_flags[0] = NULL;
+        lexer -> config -> default_flag_count = 0;
+
+        cursor++;
+        lexer -> cursor = cursor;
+        return;
     }
 
-    *cursor = 0;
-    cursor++;
-    lexer -> cursor = cursor;
+    CatalyzeConfig* config = lexer -> config;
 
-    while (*start != 0) {
-        while (IS_WHITESPACE(*start)) {
-            start++;
+    while (LIKELY(*cursor != ']')) {
+        if (UNLIKELY(*cursor == 0)) lexer_err(lexer, "Expected ']'!");
+
+        while (IS_WHITESPACE(*cursor)) {
+            cursor++;
         }
 
-        if (*start == 0) return;
-
-        char* flag_start = start;
-
-        while (IS_ALPHA(*start)) {
-            start++;
-        }
-
-        if (*start == 0) {
-            lexer -> config -> default_flags[lexer -> config -> default_flag_count++] = flag_start;
+        if (UNLIKELY(*cursor == ']')) {
+            *cursor = 0;
+            cursor++;
+            lexer -> cursor = cursor;
             return;
         }
 
-        *start = 0;
-        start++;
-        lexer -> config -> default_flags[lexer -> config -> default_flag_count++] = flag_start;
+        char* flag_start = cursor;
+
+        while (IS_ALPHA(*cursor)) {
+            cursor++;
+        }
+
+        char c = *cursor;
+        *cursor = 0;
+        cursor++;
+        config -> default_flags[config -> default_flag_count++] = flag_start;
+
+        if (UNLIKELY(c == ']')) {
+            lexer -> cursor = cursor;
+            return;
+        }
     }
 }
 
