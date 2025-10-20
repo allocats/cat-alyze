@@ -178,24 +178,26 @@ static void parse_build_dir(Lexer* lexer) {
 }
 
 static void parse_default_flags(Lexer* lexer) {
+    CatalyzeConfig* config = lexer -> config;
+    config -> default_flag_count = 0;
+
     skip_whitespace(lexer);
     char* cursor = lexer -> cursor;
-    char* end = lexer -> end;
 
     if (UNLIKELY(*cursor++ != '[')) {
         lexer_err(lexer, "Expected '['!");
     }
 
-    if (UNLIKELY(*cursor == ']')) {
-        lexer -> config -> default_flags[0] = NULL;
-        lexer -> config -> default_flag_count = 0;
+    while (IS_WHITESPACE(*cursor)) {
+        cursor++;
+    }
 
+    if (UNLIKELY(*cursor == ']')) {
+        memset(config -> default_flags, 0, MAX_FLAGS);
         cursor++;
         lexer -> cursor = cursor;
         return;
     }
-
-    CatalyzeConfig* config = lexer -> config;
 
     while (LIKELY(*cursor != ']')) {
         if (UNLIKELY(*cursor == 0)) lexer_err(lexer, "Expected ']'!");
@@ -373,91 +375,104 @@ static void parse_sources(Lexer* lexer) {
 
     skip_whitespace(lexer);
     char* cursor = lexer -> cursor;
-    char* end = lexer -> end;
+    // char* end = lexer -> end;
 
-    if (*cursor++ != '[') {
+    if (UNLIKELY(*cursor++ != '[')) {
         lexer_err(lexer, "Expected '['!");
     }
 
-    char* start = cursor;
-    while (*cursor != ']') {
-        if (*cursor == 0) lexer_err(lexer, "Expected ']'!");
-        if (*cursor == '\t' || *cursor == '\n') *cursor = ' ';
-        ADVANCE_CURSOR(cursor, end);
+    while (IS_WHITESPACE(*cursor)) {
+        cursor++;
     }
 
+    if (UNLIKELY(*cursor == ']')) {
+        lexer_err(lexer, "Expected sources!");
+    }
 
-    *cursor = 0;
-    cursor++;
-    lexer -> cursor = cursor;
+    while (LIKELY(*cursor != ']')) {
+        if (UNLIKELY(*cursor == 0)) lexer_err(lexer, "Expected ']'!");
 
-    while (*start != 0) {
-        while (IS_WHITESPACE(*start)) {
-            start++;
+        while (IS_WHITESPACE(*cursor)) {
+            cursor++;
         }
 
-        if (*start == 0) return;
-
-        char* source_start = start;
-
-        while (IS_ALPHA(*start)) {
-            start++;
-        }
-
-        if (*start == 0) {
-            target -> sources[target -> source_count++] = source_start;
+        if (UNLIKELY(*cursor == ']')) {
+            *cursor = 0;
+            cursor++;
+            lexer -> cursor = cursor;
             return;
         }
 
-        *start = 0;
-        start++;
+        char* source_start = cursor;
+
+        while (IS_ALPHA(*cursor)) {
+            cursor++;
+        }
+
+        char c = *cursor;
+        *cursor = 0;
+        cursor++;
         target -> sources[target -> source_count++] = source_start;
+
+        if (UNLIKELY(c == ']')) {
+            lexer -> cursor = cursor;
+            return;
+        }
     }
 }
 
 static void parse_flags(Lexer* lexer) {
+    Target* target = &lexer -> config -> targets[lexer -> config -> target_count];
+    target -> flag_count = 0;
+
     skip_whitespace(lexer);
     char* cursor = lexer -> cursor;
-    char* end = lexer -> end;
+    // char* end = lexer -> end;
 
     if (*cursor++ != '[') {
         lexer_err(lexer, "Expected '['!");
     }
 
-    char* start = cursor;
-    while (*cursor != ']') {
-        if (*cursor == 0) lexer_err(lexer, "Expected ']'!");
-        if (*cursor == '\t' || *cursor == '\n') *cursor = ' ';
-        ADVANCE_CURSOR(cursor, end);
+    while (IS_WHITESPACE(*cursor)) {
+        cursor++;
     }
 
-    *cursor = 0;
-    cursor++;
-    lexer -> cursor = cursor;
+    if (UNLIKELY(*cursor == ']')) {
+        memset(target -> flags, 0, MAX_FLAGS);
+        cursor++;
+        lexer -> cursor = cursor;
+        return;
+    }
 
-    Target* target = &lexer -> config -> targets[lexer -> config -> target_count];
+    while (LIKELY(*cursor != ']')) {
+        if (UNLIKELY(*cursor == 0)) lexer_err(lexer, "Expected ']'!");
 
-    while (*start != 0) {
-        while (IS_WHITESPACE(*start)) {
-            start++;
+        while (IS_WHITESPACE(*cursor)) {
+            cursor++;
         }
 
-        if (*start == 0) return;
-
-        char* flag_start = start;
-
-        while (IS_ALPHA(*start)) {
-            start++;
-        }
-
-        if (*start == 0) {
-            target -> flags[target -> flag_count++] = flag_start;
+        if (UNLIKELY(*cursor == ']')) {
+            *cursor = 0;
+            cursor++;
+            lexer -> cursor = cursor;
             return;
         }
 
-        *start = 0;
-        start++;
+        char* flag_start = cursor;
+
+        while (IS_ALPHA(*cursor)) {
+            cursor++;
+        }
+
+        char c = *cursor;
+        *cursor = 0;
+        cursor++;
         target -> flags[target -> flag_count++] = flag_start;
+
+        if (UNLIKELY(c == ']')) {
+            lexer -> cursor = cursor;
+            return;
+        }
     }
 }
 
